@@ -335,6 +335,82 @@ Requirements:
     return getMockCodingChallenges(role, difficulty, challengeCount);
 };
 
+// Voice-to-Voice Interview Conversation
+export const generateVoiceInterviewResponse = async (
+    conversationHistory: { role: 'ai' | 'user'; content: string }[],
+    role: string,
+    topic: string,
+    currentQuestionIndex: number,
+    totalQuestions: number,
+    phase: 'greeting' | 'questioning' | 'evaluating'
+): Promise<{ response: string; score?: number; isLastQuestion: boolean }> => {
+    const historyText = conversationHistory
+        .map(m => `${m.role === 'ai' ? 'Interviewer' : 'Candidate'}: ${m.content}`)
+        .join('\n');
+
+    const isLastQuestion = currentQuestionIndex >= totalQuestions - 1;
+
+    let phaseInstruction = '';
+    if (phase === 'greeting') {
+        phaseInstruction = `This is the START of the interview. Greet the candidate warmly, introduce yourself as their AI interviewer, and ask your FIRST technical question about ${topic}. Keep the greeting brief (1-2 sentences) then ask the question.`;
+    } else if (phase === 'evaluating') {
+        phaseInstruction = `The interview is OVER. Give a brief final evaluation of the candidate's performance across all questions. Mention 1-2 strengths and 1 area for improvement. Keep it encouraging and under 4 sentences. Also include an overall score from 0-100 in your JSON response.`;
+    } else {
+        phaseInstruction = isLastQuestion
+            ? `This is the LAST question (${currentQuestionIndex + 1}/${totalQuestions}). Briefly acknowledge their previous answer (1 sentence of feedback, give a score 0-10), then ask your final question.`
+            : `This is question ${currentQuestionIndex + 1} of ${totalQuestions}. Briefly acknowledge their previous answer (1 sentence of feedback, give a score 0-10), then ask the next question.`;
+    }
+
+    const prompt = `You are a friendly but professional technical interviewer conducting a SPOKEN voice interview for a ${role} position on the topic of ${topic}.
+
+IMPORTANT SPEAKING RULES:
+- Keep responses SHORT (2-4 sentences max) — this will be spoken aloud
+- Use natural, conversational language (not formal written style)
+- Don't use bullet points, markdown, or special formatting
+- Don't use words that are hard to pronounce or abbreviations
+- Sound encouraging and professional
+
+${phaseInstruction}
+
+Conversation so far:
+${historyText || '(Interview just started)'}
+
+Return STRICTLY as JSON:
+{
+  "response": "Your spoken response here",
+  "score": ${phase === 'questioning' ? 'score_for_previous_answer_0_to_10_or_null_if_first_question' : phase === 'evaluating' ? 'overall_score_0_to_100' : 'null'},
+  "isLastQuestion": ${isLastQuestion}
+}`;
+
+    const text = await callAI(prompt);
+    if (text) {
+        try {
+            const parsed = parseJSON<{ response: string; score?: number; isLastQuestion: boolean }>(text);
+            return parsed;
+        } catch { }
+    }
+
+    // Mock fallback
+    if (phase === 'greeting') {
+        return {
+            response: `Hey! Welcome to your ${role} interview. I'll be asking you ${totalQuestions} questions about ${topic} today. Let's start with the first one: Can you explain the core concepts of ${topic} and why they matter?`,
+            isLastQuestion: false
+        };
+    } else if (phase === 'evaluating') {
+        return {
+            response: `Great job completing the interview! You showed solid understanding of ${topic}. Keep practicing edge cases and system design thinking. Overall, I'd give you a strong performance rating.`,
+            score: 72,
+            isLastQuestion: true
+        };
+    } else {
+        return {
+            response: `Good answer! ${isLastQuestion ? 'For your final question' : 'Moving on'}: How would you handle a real-world scenario involving ${topic} at scale?`,
+            score: 7,
+            isLastQuestion
+        };
+    }
+};
+
 // ============ MOCK RESPONSES ============
 
 function getMockQuizQuestions(topic: string, difficulty: string, count: number): QuizQuestion[] {
@@ -564,5 +640,6 @@ export default {
     generateQuestions,
     evaluateAnswer,
     generateFeedback,
-    generateImprovementPlan
+    generateImprovementPlan,
+    generateVoiceInterviewResponse
 };

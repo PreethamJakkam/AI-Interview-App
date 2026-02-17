@@ -32,26 +32,16 @@ export default function CodingTestPage() {
     const [showHints, setShowHints] = useState(false);
     const [testResults, setTestResults] = useState<{ passed: boolean; input: string; expected: string; actual: string }[]>([]);
 
-    // Timer effect
     useEffect(() => {
         if (stage !== 'coding') return;
-
         const interval = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) return 0;
-                return prev - 1;
-            });
+            setTimeLeft(prev => { if (prev <= 1) return 0; return prev - 1; });
         }, 1000);
-
         return () => clearInterval(interval);
     }, [stage, currentIndex]);
 
     const startCoding = async () => {
-        if (!selectedRole || !selectedDifficulty) {
-            toast.error('Please select role and difficulty');
-            return;
-        }
-
+        if (!selectedRole || !selectedDifficulty) { toast.error('Please select role and difficulty'); return; }
         setIsLoading(true);
         try {
             const generatedChallenges = await generateCodingChallenges(selectedRole, selectedDifficulty, 3);
@@ -60,51 +50,28 @@ export default function CodingTestPage() {
             setTimeLeft(generatedChallenges[0]?.timeLimit || 1800);
             setStartTime(Date.now());
             setStage('coding');
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to generate challenges');
-        } finally {
-            setIsLoading(false);
-        }
+        } catch (error) { console.error(error); toast.error('Failed to generate challenges'); }
+        finally { setIsLoading(false); }
     };
 
     const runTests = async () => {
         setIsRunning(true);
         const currentChallenge = challenges[currentIndex];
-
         try {
-            // Use AI to evaluate the code
-            const evaluation = await evaluateAnswer(
-                currentChallenge.description,
-                code,
-                currentChallenge.testCases.map(tc => tc.expectedOutput),
-                true // isCode = true
-            );
-
+            const evaluation = await evaluateAnswer(currentChallenge.description, code, currentChallenge.testCases.map(tc => tc.expectedOutput), true);
             const visibleTests = currentChallenge.testCases.filter(tc => !tc.isHidden);
             const results = visibleTests.map((tc, i) => ({
-                passed: evaluation.score >= (5 + i * 1.5), // Scale pass threshold per test
-                input: tc.input,
-                expected: tc.expectedOutput,
-                actual: evaluation.codeOutput || 'Evaluated by AI'
+                passed: evaluation.score >= (5 + i * 1.5), input: tc.input,
+                expected: tc.expectedOutput, actual: evaluation.codeOutput || 'Evaluated by AI'
             }));
-
             setTestResults(results);
         } catch (error) {
             console.error('AI evaluation failed:', error);
-            // Graceful fallback: basic code length check
-            const results = currentChallenge.testCases
-                .filter(tc => !tc.isHidden)
-                .map(tc => ({
-                    passed: code.trim().length > 50,
-                    input: tc.input,
-                    expected: tc.expectedOutput,
-                    actual: 'Evaluation unavailable'
-                }));
+            const results = currentChallenge.testCases.filter(tc => !tc.isHidden).map(tc => ({
+                passed: code.trim().length > 50, input: tc.input, expected: tc.expectedOutput, actual: 'Evaluation unavailable'
+            }));
             setTestResults(results);
-        } finally {
-            setIsRunning(false);
-        }
+        } finally { setIsRunning(false); }
     };
 
     const submitChallenge = () => {
@@ -113,70 +80,33 @@ export default function CodingTestPage() {
         const passedTests = testResults.filter(r => r.passed).length;
         const totalTests = currentChallenge.testCases.length;
         const score = Math.round((passedTests / totalTests) * 100);
-
-        const submission: CodingSubmission = {
-            challengeId: currentChallenge.id,
-            code,
-            language: currentChallenge.language,
-            passedTests,
-            totalTests,
-            score,
-            timeSpent
-        };
-
+        const submission: CodingSubmission = { challengeId: currentChallenge.id, code, language: currentChallenge.language, passedTests, totalTests, score, timeSpent };
         setSubmissions(prev => [...prev, submission]);
-
         if (currentIndex < challenges.length - 1) {
             setCurrentIndex(prev => prev + 1);
             const nextChallenge = challenges[currentIndex + 1];
-            setCode(nextChallenge.starterCode);
-            setTimeLeft(nextChallenge.timeLimit);
-            setStartTime(Date.now());
-            setTestResults([]);
-            setShowHints(false);
-        } else {
-            finishCoding();
-        }
+            setCode(nextChallenge.starterCode); setTimeLeft(nextChallenge.timeLimit);
+            setStartTime(Date.now()); setTestResults([]); setShowHints(false);
+        } else { finishCoding(); }
     };
 
     const finishCoding = async () => {
-        const overallScore = submissions.length > 0
-            ? Math.round(submissions.reduce((sum, s) => sum + s.score, 0) / submissions.length)
-            : 0;
+        const overallScore = submissions.length > 0 ? Math.round(submissions.reduce((sum, s) => sum + s.score, 0) / submissions.length) : 0;
         const totalTime = submissions.reduce((sum, s) => sum + s.timeSpent, 0);
-
         setStage('results');
-
-        // Save to Firebase if logged in
         if (user) {
             try {
                 await savePracticeSession({
-                    odiserId: user.uid,
-                    mode: 'coding',
-                    role: selectedRole,
-                    difficulty: selectedDifficulty,
-                    score: overallScore,
-                    challenges,
-                    submissions,
-                    totalTime,
-                    status: 'completed'
+                    odiserId: user.uid, mode: 'coding', role: selectedRole, difficulty: selectedDifficulty,
+                    score: overallScore, challenges, submissions, totalTime, status: 'completed'
                 });
-            } catch (error) {
-                console.error('Failed to save session:', error);
-            }
+            } catch (error) { console.error('Failed to save session:', error); }
         }
     };
 
     const restartCoding = () => {
-        setStage('role');
-        setSelectedRole('');
-        setSelectedDifficulty('');
-        setChallenges([]);
-        setCurrentIndex(0);
-        setCode('');
-        setSubmissions([]);
-        setTestResults([]);
-        setShowHints(false);
+        setStage('role'); setSelectedRole(''); setSelectedDifficulty(''); setChallenges([]);
+        setCurrentIndex(0); setCode(''); setSubmissions([]); setTestResults([]); setShowHints(false);
     };
 
     const formatTime = (seconds: number) => {
@@ -185,54 +115,45 @@ export default function CodingTestPage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const cardStyle = {
-        background: 'var(--bg-card)',
-        borderWidth: '1px',
-        borderStyle: 'solid',
-        borderColor: 'var(--border-subtle)',
-        borderRadius: '0.75rem',
+    const glassCard: React.CSSProperties = {
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid var(--glass-border)',
+        borderRadius: 'var(--radius-xl)',
         padding: '1.5rem',
-        transition: 'all 0.2s'
+        transition: 'all var(--transition-base)',
     };
 
-    const overallScore = submissions.length > 0
-        ? Math.round(submissions.reduce((sum, s) => sum + s.score, 0) / submissions.length)
-        : 0;
+    const overallScore = submissions.length > 0 ? Math.round(submissions.reduce((sum, s) => sum + s.score, 0) / submissions.length) : 0;
+    const getScoreColor = (s: number) => { if (s >= 70) return 'var(--success)'; if (s >= 50) return 'var(--warning)'; return 'var(--error)'; };
 
     return (
         <AppLayout>
-            <div style={{ maxWidth: stage === 'coding' ? '1100px' : '700px', margin: '0 auto', padding: '2rem 0' }}>
+            <div style={{ maxWidth: stage === 'coding' ? '1100px' : '700px', margin: '0 auto', padding: '2.5rem 0', transition: 'max-width 0.3s ease' }}>
                 {/* Header */}
                 <motion.div
                     style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
                 >
                     <button
                         onClick={() => stage === 'role' ? router.push('/practice') : setStage('role')}
                         style={{
-                            background: 'var(--bg-elevated)',
-                            border: '1px solid var(--border-subtle)',
-                            borderRadius: '0.5rem',
-                            padding: '0.5rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
+                            background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-md)', padding: '0.5rem', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
                     >
                         <ArrowLeft size={18} style={{ color: 'var(--text-secondary)' }} />
                     </button>
                     <div style={{ flex: 1 }}>
                         <h1 style={{
-                            fontFamily: 'var(--font-serif)',
-                            fontSize: '1.375rem',
-                            fontWeight: 600,
-                            color: 'var(--text-primary)'
+                            fontFamily: 'var(--font-heading)', fontSize: '1.375rem', fontWeight: 700,
+                            color: 'var(--text-primary)', letterSpacing: '-0.02em',
                         }}>
-                            Coding <span style={{ color: 'var(--accent-amber)' }}>test</span>
+                            Coding <span className="text-gradient">test</span>
                         </h1>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                             {stage === 'role' && 'Select a role'}
                             {stage === 'difficulty' && 'Choose difficulty'}
                             {stage === 'coding' && `Challenge ${currentIndex + 1} of ${challenges.length}`}
@@ -241,20 +162,13 @@ export default function CodingTestPage() {
                     </div>
                     {stage === 'coding' && (
                         <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.5rem 1rem',
-                            background: timeLeft < 300 ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-elevated)',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)',
+                            background: timeLeft < 300 ? 'rgba(239, 68, 68, 0.08)' : 'var(--bg-elevated)',
                             border: `1px solid ${timeLeft < 300 ? 'var(--error)' : 'var(--border-subtle)'}`,
-                            borderRadius: '0.5rem'
                         }}>
-                            <Clock size={16} style={{ color: timeLeft < 300 ? 'var(--error)' : 'var(--accent-amber)' }} />
-                            <span style={{
-                                fontFamily: 'var(--font-mono)',
-                                fontWeight: 600,
-                                color: timeLeft < 300 ? 'var(--error)' : 'var(--text-primary)'
-                            }}>
+                            <Clock size={14} style={{ color: timeLeft < 300 ? 'var(--error)' : 'var(--accent-cyan)' }} />
+                            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.8125rem', color: timeLeft < 300 ? 'var(--error)' : 'var(--text-primary)' }}>
                                 {formatTime(timeLeft)}
                             </span>
                         </div>
@@ -264,31 +178,20 @@ export default function CodingTestPage() {
                 <AnimatePresence mode="wait">
                     {/* Role Selection */}
                     {stage === 'role' && (
-                        <motion.div
-                            key="role"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                        >
+                        <motion.div key="role" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
                                 {appConfig.codingRoles.map((role) => (
-                                    <div
+                                    <motion.div
                                         key={role.id}
                                         onClick={() => { setSelectedRole(role.id); setStage('difficulty'); }}
-                                        style={{
-                                            ...cardStyle,
-                                            cursor: 'pointer',
-                                            textAlign: 'center'
-                                        }}
+                                        style={{ ...glassCard, cursor: 'pointer', textAlign: 'center' }}
+                                        whileHover={{ scale: 1.02, borderColor: 'var(--border-medium)' }}
+                                        whileTap={{ scale: 0.98 }}
                                     >
                                         <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{role.icon}</div>
-                                        <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                                            {role.name}
-                                        </div>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                            {role.description}
-                                        </div>
-                                    </div>
+                                        <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{role.name}</div>
+                                        <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>{role.description}</div>
+                                    </motion.div>
                                 ))}
                             </div>
                         </motion.div>
@@ -296,45 +199,39 @@ export default function CodingTestPage() {
 
                     {/* Difficulty Selection */}
                     {stage === 'difficulty' && (
-                        <motion.div
-                            key="difficulty"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                        >
+                        <motion.div key="difficulty" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {appConfig.difficulties.map((diff) => (
-                                    <div
+                                    <motion.div
                                         key={diff.id}
                                         onClick={() => setSelectedDifficulty(diff.id)}
                                         style={{
-                                            ...cardStyle,
-                                            cursor: 'pointer',
-                                            borderColor: selectedDifficulty === diff.id ? 'var(--accent-amber)' : 'var(--border-subtle)',
-                                            background: selectedDifficulty === diff.id ? 'var(--accent-amber-dim)' : 'var(--bg-card)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '1rem'
+                                            ...glassCard, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem',
+                                            borderColor: selectedDifficulty === diff.id ? 'rgba(6,214,160,0.3)' : 'var(--glass-border)',
+                                            background: selectedDifficulty === diff.id ? 'var(--accent-cyan-dim)' : 'var(--glass-bg)',
                                         }}
+                                        whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
                                     >
                                         <span style={{ fontSize: '1.5rem' }}>{diff.icon}</span>
                                         <div>
-                                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{diff.name}</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{diff.description}</div>
+                                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.875rem' }}>{diff.name}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{diff.description}</div>
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 ))}
                             </div>
-
-                            <button
-                                onClick={startCoding}
-                                disabled={!selectedDifficulty || isLoading}
+                            <motion.button
+                                onClick={startCoding} disabled={!selectedDifficulty || isLoading}
                                 className="btn-primary"
-                                style={{ width: '100%', marginTop: '1.5rem', padding: '1rem', justifyContent: 'center' }}
+                                style={{ width: '100%', marginTop: '1.5rem', padding: '1rem', justifyContent: 'center', fontSize: '0.8125rem' }}
+                                whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
                             >
-                                {isLoading ? 'Loading...' : 'Start Coding'}
-                                <ChevronRight size={18} />
-                            </button>
+                                {isLoading ? (
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span className="ai-typing-dot" /><span className="ai-typing-dot" /><span className="ai-typing-dot" /> Generating...
+                                    </span>
+                                ) : <>Start Coding <ChevronRight size={16} /></>}
+                            </motion.button>
                         </motion.div>
                     )}
 
@@ -342,58 +239,40 @@ export default function CodingTestPage() {
                     {stage === 'coding' && challenges.length > 0 && (
                         <motion.div
                             key={`coding-${currentIndex}`}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                             style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}
                         >
                             {/* Problem Description */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={cardStyle}>
+                                <div style={{ ...glassCard, background: 'var(--glass-bg-strong)' }}>
                                     <h2 style={{
-                                        fontFamily: 'var(--font-serif)',
-                                        fontSize: '1.125rem',
-                                        fontWeight: 600,
-                                        color: 'var(--text-primary)',
-                                        marginBottom: '0.75rem'
+                                        fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: 600,
+                                        color: 'var(--text-primary)', marginBottom: '0.75rem', letterSpacing: '-0.01em',
                                     }}>
                                         {challenges[currentIndex].title}
                                     </h2>
-                                    <p style={{
-                                        fontSize: '0.85rem',
-                                        color: 'var(--text-secondary)',
-                                        lineHeight: 1.6,
-                                        whiteSpace: 'pre-wrap'
-                                    }}>
+                                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                         {challenges[currentIndex].description}
                                     </p>
                                 </div>
 
                                 {/* Hints */}
-                                <div style={cardStyle}>
+                                <div style={glassCard}>
                                     <button
                                         onClick={() => setShowHints(!showHints)}
                                         style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            background: 'none',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            color: 'var(--accent-amber)',
-                                            fontSize: '0.85rem',
-                                            fontWeight: 500
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                                            color: 'var(--accent-cyan)', fontSize: '0.8125rem', fontWeight: 500,
                                         }}
                                     >
-                                        <Lightbulb size={16} />
+                                        <Lightbulb size={14} />
                                         {showHints ? 'Hide Hints' : 'Show Hints'}
                                     </button>
                                     {showHints && (
                                         <ul style={{ marginTop: '0.75rem', paddingLeft: '1.25rem' }}>
                                             {challenges[currentIndex].hints.map((hint, i) => (
-                                                <li key={i} style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.375rem' }}>
-                                                    {hint}
-                                                </li>
+                                                <li key={i} style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginBottom: '0.375rem' }}>{hint}</li>
                                             ))}
                                         </ul>
                                     )}
@@ -401,30 +280,19 @@ export default function CodingTestPage() {
 
                                 {/* Test Results */}
                                 {testResults.length > 0 && (
-                                    <div style={cardStyle}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>
+                                    <div style={glassCard}>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                             Test Results
                                         </div>
                                         {testResults.map((result, i) => (
-                                            <div
-                                                key={i}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.5rem',
-                                                    padding: '0.5rem',
-                                                    background: result.passed ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                    borderRadius: '0.375rem',
-                                                    marginBottom: '0.375rem',
-                                                    fontSize: '0.8rem'
-                                                }}
-                                            >
-                                                {result.passed ? (
-                                                    <CheckCircle size={14} style={{ color: 'var(--success)' }} />
-                                                ) : (
-                                                    <XCircle size={14} style={{ color: 'var(--error)' }} />
-                                                )}
-                                                <span style={{ color: 'var(--text-secondary' }}>Test {i + 1}: {result.input}</span>
+                                            <div key={i} style={{
+                                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                                padding: '0.5rem', borderRadius: 'var(--radius-sm)',
+                                                background: result.passed ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                                marginBottom: '0.375rem', fontSize: '0.775rem',
+                                            }}>
+                                                {result.passed ? <CheckCircle size={14} style={{ color: 'var(--success)' }} /> : <XCircle size={14} style={{ color: 'var(--error)' }} />}
+                                                <span style={{ color: 'var(--text-secondary)' }}>Test {i + 1}: {result.input}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -434,38 +302,25 @@ export default function CodingTestPage() {
                             {/* Code Editor */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 <div style={{
-                                    ...cardStyle,
-                                    padding: 0,
-                                    flex: 1,
-                                    display: 'flex',
-                                    flexDirection: 'column'
+                                    ...glassCard, padding: 0, flex: 1,
+                                    display: 'flex', flexDirection: 'column', overflow: 'hidden',
                                 }}>
                                     <div style={{
-                                        padding: '0.75rem 1rem',
-                                        borderBottom: '1px solid var(--border-subtle)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between'
+                                        padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-subtle)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     }}>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                             {challenges[currentIndex].language}
                                         </span>
                                     </div>
                                     <textarea
-                                        value={code}
-                                        onChange={(e) => setCode(e.target.value)}
+                                        value={code} onChange={(e) => setCode(e.target.value)}
                                         style={{
-                                            flex: 1,
-                                            minHeight: '300px',
-                                            padding: '1rem',
-                                            background: 'var(--bg-elevated)',
-                                            border: 'none',
-                                            borderRadius: '0 0 0.75rem 0.75rem',
-                                            fontFamily: 'var(--font-mono)',
-                                            fontSize: '0.85rem',
-                                            color: 'var(--text-primary)',
-                                            resize: 'none',
-                                            outline: 'none'
+                                            flex: 1, minHeight: '300px', padding: '1rem',
+                                            background: 'var(--bg-elevated)', border: 'none',
+                                            borderRadius: '0 0 var(--radius-xl) var(--radius-xl)',
+                                            fontFamily: 'var(--font-mono)', fontSize: '0.8125rem',
+                                            color: 'var(--text-primary)', resize: 'none', outline: 'none',
                                         }}
                                         placeholder="Write your code here..."
                                     />
@@ -473,23 +328,22 @@ export default function CodingTestPage() {
 
                                 {/* Actions */}
                                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                    <button
-                                        onClick={runTests}
-                                        disabled={isRunning}
-                                        className="btn-secondary"
-                                        style={{ flex: 1, justifyContent: 'center' }}
-                                    >
-                                        <Play size={16} />
-                                        {isRunning ? 'Running...' : 'Run Tests'}
-                                    </button>
-                                    <button
-                                        onClick={submitChallenge}
-                                        className="btn-primary"
-                                        style={{ flex: 1, justifyContent: 'center' }}
-                                    >
+                                    <motion.button onClick={runTests} disabled={isRunning} className="btn-secondary"
+                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem' }}
+                                        whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+                                        <Play size={14} />
+                                        {isRunning ? (
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                                <span className="ai-typing-dot" /><span className="ai-typing-dot" /><span className="ai-typing-dot" />
+                                            </span>
+                                        ) : 'Run Tests'}
+                                    </motion.button>
+                                    <motion.button onClick={submitChallenge} className="btn-primary"
+                                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem' }}
+                                        whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
                                         {currentIndex < challenges.length - 1 ? 'Submit & Next' : 'Submit & Finish'}
-                                        <ChevronRight size={16} />
-                                    </button>
+                                        <ChevronRight size={14} />
+                                    </motion.button>
                                 </div>
                             </div>
                         </motion.div>
@@ -497,43 +351,32 @@ export default function CodingTestPage() {
 
                     {/* Results */}
                     {stage === 'results' && (
-                        <motion.div
-                            key="results"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                        >
-                            {/* Score Card */}
-                            <div style={{ ...cardStyle, textAlign: 'center', marginBottom: '1.5rem' }}>
+                        <motion.div key="results" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                            <div style={{ ...glassCard, textAlign: 'center', marginBottom: '1.5rem', background: 'var(--glass-bg-strong)' }}>
                                 <div style={{
-                                    width: '80px',
-                                    height: '80px',
-                                    borderRadius: '50%',
-                                    background: overallScore >= 70 ? 'rgba(34, 197, 94, 0.1)' : overallScore >= 50 ? 'var(--accent-amber-dim)' : 'rgba(239, 68, 68, 0.1)',
-                                    border: `2px solid ${overallScore >= 70 ? 'var(--success)' : overallScore >= 50 ? 'var(--accent-amber)' : 'var(--error)'}`,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    margin: '0 auto 1rem'
+                                    width: '80px', height: '80px', borderRadius: '50%',
+                                    background: `conic-gradient(${getScoreColor(overallScore)} ${overallScore}%, var(--bg-elevated) 0)`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto 1rem', padding: '4px',
+                                    boxShadow: `0 0 20px ${getScoreColor(overallScore)}20`,
                                 }}>
-                                    <span style={{
-                                        fontFamily: 'var(--font-serif)',
-                                        fontSize: '1.75rem',
-                                        fontWeight: 700,
-                                        color: overallScore >= 70 ? 'var(--success)' : overallScore >= 50 ? 'var(--accent-amber)' : 'var(--error)'
+                                    <div style={{
+                                        width: '100%', height: '100%', borderRadius: '50%', background: 'var(--bg-primary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     }}>
-                                        {overallScore}%
-                                    </span>
+                                        <span style={{
+                                            fontFamily: 'var(--font-heading)', fontSize: '1.5rem', fontWeight: 700,
+                                            color: getScoreColor(overallScore),
+                                        }}>{overallScore}%</span>
+                                    </div>
                                 </div>
                                 <h2 style={{
-                                    fontFamily: 'var(--font-serif)',
-                                    fontSize: '1.25rem',
-                                    fontWeight: 600,
-                                    color: 'var(--text-primary)',
-                                    marginBottom: '0.5rem'
+                                    fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 700,
+                                    color: 'var(--text-primary)', marginBottom: '0.5rem', letterSpacing: '-0.02em',
                                 }}>
                                     {overallScore >= 80 ? 'Excellent!' : overallScore >= 60 ? 'Good job!' : 'Keep practicing!'}
                                 </h2>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                                     Completed {submissions.length} challenges
                                 </p>
                             </div>
@@ -541,22 +384,17 @@ export default function CodingTestPage() {
                             {/* Submission Summary */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
                                 {submissions.map((sub, i) => (
-                                    <div key={i} style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div key={i} style={{ ...glassCard, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div>
-                                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-                                                Challenge {i + 1}
-                                            </div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                {sub.passedTests}/{sub.totalTests} tests passed • {Math.floor(sub.timeSpent / 60)}m {sub.timeSpent % 60}s
+                                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.8125rem' }}>Challenge {i + 1}</div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                {sub.passedTests}/{sub.totalTests} tests passed · {Math.floor(sub.timeSpent / 60)}m {sub.timeSpent % 60}s
                                             </div>
                                         </div>
                                         <div style={{
-                                            padding: '0.375rem 0.75rem',
-                                            borderRadius: '0.375rem',
-                                            background: sub.score >= 70 ? 'rgba(34, 197, 94, 0.1)' : sub.score >= 50 ? 'var(--accent-amber-dim)' : 'rgba(239, 68, 68, 0.1)',
-                                            color: sub.score >= 70 ? 'var(--success)' : sub.score >= 50 ? 'var(--accent-amber)' : 'var(--error)',
-                                            fontWeight: 600,
-                                            fontSize: '0.85rem'
+                                            padding: '0.3rem 0.75rem', borderRadius: 'var(--radius-full)',
+                                            background: `${getScoreColor(sub.score)}12`, border: `1px solid ${getScoreColor(sub.score)}25`,
+                                            color: getScoreColor(sub.score), fontWeight: 600, fontSize: '0.775rem',
                                         }}>
                                             {sub.score}%
                                         </div>
@@ -566,21 +404,14 @@ export default function CodingTestPage() {
 
                             {/* Actions */}
                             <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                <button
-                                    onClick={restartCoding}
-                                    className="btn-secondary"
-                                    style={{ flex: 1, justifyContent: 'center' }}
-                                >
-                                    <RotateCcw size={16} />
-                                    Try Again
-                                </button>
-                                <button
-                                    onClick={() => router.push('/practice')}
-                                    className="btn-primary"
-                                    style={{ flex: 1, justifyContent: 'center' }}
-                                >
+                                <motion.button onClick={restartCoding} className="btn-secondary" style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem' }}
+                                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+                                    <RotateCcw size={14} /> Try Again
+                                </motion.button>
+                                <motion.button onClick={() => router.push('/practice')} className="btn-primary" style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem' }}
+                                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
                                     Back to Modes
-                                </button>
+                                </motion.button>
                             </div>
                         </motion.div>
                     )}

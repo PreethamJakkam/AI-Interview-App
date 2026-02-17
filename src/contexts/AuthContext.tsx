@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
-import { onAuthChange, getUserData, logOut } from '@/lib/firebase';
+import { onAuthChange, getUserData, logOut, signInWithEmail, signInWithGoogle as firebaseSignInWithGoogle, signUpWithEmail, handleRedirectResult } from '@/lib/firebase';
 
 interface AuthContextType {
     user: FirebaseUser | null;
@@ -15,6 +15,9 @@ interface AuthContextType {
         bestScore: number;
     } | null;
     loading: boolean;
+    signIn: (email: string, password: string) => Promise<void>;
+    signUp: (email: string, password: string, displayName: string) => Promise<void>;
+    signInWithGoogle: () => Promise<void>;
     signOut: () => Promise<void>;
 }
 
@@ -22,6 +25,9 @@ const AuthContext = createContext<AuthContextType>({
     user: null,
     userData: null,
     loading: true,
+    signIn: async () => { },
+    signUp: async () => { },
+    signInWithGoogle: async () => { },
     signOut: async () => { },
 });
 
@@ -33,6 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Process any pending redirect auth result
+        handleRedirectResult().catch(() => { });
+
         const unsubscribe = onAuthChange(async (firebaseUser) => {
             setUser(firebaseUser);
 
@@ -56,6 +65,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return unsubscribe;
     }, []);
 
+    const handleSignIn = async (email: string, password: string) => {
+        await signInWithEmail(email, password);
+    };
+
+    const handleSignUp = async (email: string, password: string, displayName: string) => {
+        await signUpWithEmail(email, password, displayName);
+    };
+
+    const handleSignInWithGoogle = async () => {
+        await firebaseSignInWithGoogle();
+    };
+
     const handleSignOut = async () => {
         await logOut();
         setUser(null);
@@ -63,7 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, userData, loading, signOut: handleSignOut }}>
+        <AuthContext.Provider value={{
+            user,
+            userData,
+            loading,
+            signIn: handleSignIn,
+            signUp: handleSignUp,
+            signInWithGoogle: handleSignInWithGoogle,
+            signOut: handleSignOut
+        }}>
             {children}
         </AuthContext.Provider>
     );

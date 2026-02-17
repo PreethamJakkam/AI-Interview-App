@@ -101,7 +101,13 @@ function NewInterviewContent() {
             const allSkills = [...(analysis?.programmingLanguages || []), ...(analysis?.toolsFrameworks || [])];
             const questions = await generateQuestions(allSkills, skillConfidence, analysis?.experienceLevel || 'Intermediate', selectedRole, selectedMode);
             sessionStorage.setItem('interviewData', JSON.stringify({ questions, analysis, skillConfidence, role: selectedRole, mode: selectedMode, topic: inputType === 'topic' ? topic : null }));
-            router.push('/interview/session');
+
+            // Route to voice-session for voice mode, standard session for other modes
+            if (selectedMode === 'voice') {
+                router.push('/interview/voice-session');
+            } else {
+                router.push('/interview/session');
+            }
         } catch (error) {
             console.error(error);
             toast.error('Failed to generate questions');
@@ -114,205 +120,267 @@ function NewInterviewContent() {
         switch (stage) { case 'input': return 25; case 'analysis': return 50; case 'role': return 75; case 'mode': return 100; }
     };
 
-    const cardStyle = {
-        background: 'var(--bg-card)',
+    const stages = ['Input', 'Analysis', 'Role', 'Start'];
+    const stageKeys: Stage[] = ['input', 'analysis', 'role', 'mode'];
+    const currentStageIndex = stageKeys.indexOf(stage);
+
+    const cardStyle: React.CSSProperties = {
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderWidth: '1px',
         borderStyle: 'solid',
-        borderColor: 'var(--border-subtle)',
-        borderRadius: '0.75rem',
+        borderColor: 'var(--glass-border)',
+        borderRadius: 'var(--radius-lg)',
         padding: '1.5rem',
-        transition: 'all 0.2s'
+        transition: 'all var(--transition-base)',
     };
 
-    const cardActiveStyle = {
+    const cardActiveStyle: React.CSSProperties = {
         ...cardStyle,
-        borderColor: 'var(--accent-amber)',
-        background: 'var(--accent-amber-dim)'
+        borderColor: 'var(--accent-cyan)',
+        background: 'var(--accent-cyan-dim)',
+        boxShadow: 'var(--shadow-glow-sm)',
     };
 
-    const backButtonStyle = {
-        display: 'flex', alignItems: 'center', gap: '0.25rem',
+    const backButtonStyle: React.CSSProperties = {
+        display: 'flex', alignItems: 'center', gap: '0.375rem',
         background: 'none', border: 'none', color: 'var(--text-muted)',
-        cursor: 'pointer', marginBottom: '1.5rem', fontSize: '0.875rem'
+        cursor: 'pointer', marginBottom: '1.5rem', fontSize: '0.8rem',
+        transition: 'color var(--transition-base)',
     };
 
     return (
         <AppLayout>
-            <div style={{ maxWidth: '600px', margin: '0 auto', padding: '2rem 0' }}>
-                {/* Progress Bar */}
-                <div style={{ marginBottom: '2.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        <span style={{ color: stage === 'input' ? 'var(--accent-amber)' : 'inherit' }}>Input</span>
-                        <span style={{ color: stage === 'analysis' ? 'var(--accent-amber)' : 'inherit' }}>Analysis</span>
-                        <span style={{ color: stage === 'role' ? 'var(--accent-amber)' : 'inherit' }}>Role</span>
-                        <span style={{ color: stage === 'mode' ? 'var(--accent-amber)' : 'inherit' }}>Start</span>
+            <div className="page-enter" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '2rem', minHeight: '80vh' }}>
+                {/* Left — Step Progress */}
+                <div style={{ paddingTop: '0.5rem' }}>
+                    <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '1.5rem', letterSpacing: '-0.01em' }}>Setup</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        {stages.map((s, i) => (
+                            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 0.75rem', borderRadius: 'var(--radius-md)', background: i === currentStageIndex ? 'var(--accent-cyan-dim)' : 'transparent', transition: 'all var(--transition-base)' }}>
+                                <div style={{ width: '24px', height: '24px', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 600, fontFamily: 'var(--font-mono)', background: i < currentStageIndex ? 'var(--accent-cyan)' : i === currentStageIndex ? 'var(--accent-cyan-dim)' : 'var(--bg-surface)', color: i < currentStageIndex ? '#07070D' : i === currentStageIndex ? 'var(--accent-cyan)' : 'var(--text-muted)', border: `1px solid ${i <= currentStageIndex ? 'rgba(6,214,160,0.3)' : 'var(--border-subtle)'}` }}>
+                                    {i < currentStageIndex ? '✓' : i + 1}
+                                </div>
+                                <span style={{ fontSize: '0.8125rem', fontWeight: i === currentStageIndex ? 600 : 400, color: i === currentStageIndex ? 'var(--accent-cyan)' : i < currentStageIndex ? 'var(--text-secondary)' : 'var(--text-muted)' }}>{s}</span>
+                            </div>
+                        ))}
                     </div>
-                    <div style={{ background: 'var(--bg-elevated)', borderRadius: '0.25rem', height: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${getProgress()}%`, height: '100%', background: 'var(--accent-amber)', transition: 'width 0.3s' }} />
+                    <div style={{ marginTop: '1.5rem' }}>
+                        <div className="progress-bar"><motion.div className="progress-fill" initial={{ width: '0%' }} animate={{ width: `${getProgress()}%` }} transition={{ duration: 0.5 }} /></div>
                     </div>
                 </div>
+                {/* Right — Content */}
+                <div style={{ maxWidth: '640px' }}>
 
-                <AnimatePresence mode="wait">
-                    {/* Stage 1: Input */}
-                    {stage === 'input' && (
-                        <motion.div key="input" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Start your interview</h1>
-                            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.9rem' }}>Choose how to practice</p>
+                    <AnimatePresence mode="wait">
+                        {/* Stage 1: Input */}
+                        {stage === 'input' && (
+                            <motion.div key="input" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                                <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Start your interview</h1>
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.875rem' }}>Choose how to practice</p>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div onClick={() => setInputType('resume')} style={{ ...(inputType === 'resume' ? cardActiveStyle : cardStyle), cursor: 'pointer', textAlign: 'center' }}>
-                                    <FileText size={24} style={{ color: inputType === 'resume' ? 'var(--accent-amber)' : 'var(--text-muted)', margin: '0 auto 0.5rem' }} />
-                                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>From Resume</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>AI extracts your skills</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <motion.div
+                                        onClick={() => setInputType('resume')}
+                                        whileHover={{ y: -2 }}
+                                        style={{ ...(inputType === 'resume' ? cardActiveStyle : cardStyle), cursor: 'pointer', textAlign: 'center' }}
+                                    >
+                                        <FileText size={24} style={{ color: inputType === 'resume' ? 'var(--accent-cyan)' : 'var(--text-muted)', margin: '0 auto 0.625rem' }} />
+                                        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>From Resume</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>AI extracts your skills</div>
+                                    </motion.div>
+                                    <motion.div
+                                        onClick={() => setInputType('topic')}
+                                        whileHover={{ y: -2 }}
+                                        style={{ ...(inputType === 'topic' ? cardActiveStyle : cardStyle), cursor: 'pointer', textAlign: 'center' }}
+                                    >
+                                        <Sparkles size={24} style={{ color: inputType === 'topic' ? 'var(--accent-cyan)' : 'var(--text-muted)', margin: '0 auto 0.625rem' }} />
+                                        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>By Topic</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Practice specific skills</div>
+                                    </motion.div>
                                 </div>
-                                <div onClick={() => setInputType('topic')} style={{ ...(inputType === 'topic' ? cardActiveStyle : cardStyle), cursor: 'pointer', textAlign: 'center' }}>
-                                    <Sparkles size={24} style={{ color: inputType === 'topic' ? 'var(--accent-amber)' : 'var(--text-muted)', margin: '0 auto 0.5rem' }} />
-                                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>By Topic</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Practice specific skills</div>
-                                </div>
-                            </div>
 
-                            {inputType === 'resume' ? (
-                                <div>
-                                    <textarea
-                                        value={resumeText}
-                                        onChange={(e) => setResumeText(e.target.value)}
-                                        placeholder="Paste your resume here..."
-                                        style={{
-                                            width: '100%', height: '200px', padding: '1rem',
-                                            background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-                                            borderRadius: '0.5rem', color: 'var(--text-primary)', fontSize: '0.875rem', resize: 'none',
-                                            fontFamily: 'var(--font-sans)'
-                                        }}
-                                    />
-                                    <button onClick={() => setResumeText(SAMPLE_RESUME)} style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: 'var(--accent-amber)', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                        Use sample resume
-                                    </button>
-                                </div>
-                            ) : (
-                                <div>
-                                    <input
-                                        value={topic}
-                                        onChange={(e) => setTopic(e.target.value)}
-                                        placeholder="e.g., React, Python, System Design..."
-                                        style={{
-                                            width: '100%', padding: '1rem',
-                                            background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-                                            borderRadius: '0.5rem', color: 'var(--text-primary)', fontSize: '0.875rem'
-                                        }}
-                                    />
-                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                                        {['React', 'Node.js', 'Python', 'SQL', 'System Design'].map((t) => (
-                                            <button key={t} onClick={() => setTopic(t)} style={{
-                                                padding: '0.375rem 0.75rem', fontSize: '0.75rem',
+                                {inputType === 'resume' ? (
+                                    <div>
+                                        <textarea
+                                            value={resumeText}
+                                            onChange={(e) => setResumeText(e.target.value)}
+                                            placeholder="Paste your resume here..."
+                                            style={{
+                                                width: '100%', height: '200px', padding: '1rem',
                                                 background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-                                                borderRadius: '0.25rem', color: 'var(--text-secondary)', cursor: 'pointer'
-                                            }}>
-                                                {t}
-                                            </button>
-                                        ))}
+                                                borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.875rem', resize: 'none',
+                                                fontFamily: 'var(--font-sans)', transition: 'all var(--transition-base)',
+                                            }}
+                                        />
+                                        <button onClick={() => setResumeText(SAMPLE_RESUME)} style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500 }}>
+                                            Use sample resume
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <input
+                                            value={topic}
+                                            onChange={(e) => setTopic(e.target.value)}
+                                            placeholder="e.g., React, Python, System Design..."
+                                            style={{
+                                                width: '100%', padding: '1rem',
+                                                background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                                                borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.875rem',
+                                                transition: 'all var(--transition-base)',
+                                            }}
+                                        />
+                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                                            {['React', 'Node.js', 'Python', 'SQL', 'System Design'].map((t) => (
+                                                <button key={t} onClick={() => setTopic(t)} style={{
+                                                    padding: '0.375rem 0.75rem', fontSize: '0.7rem',
+                                                    background: topic === t ? 'var(--accent-cyan-dim)' : 'var(--bg-surface)',
+                                                    border: `1px solid ${topic === t ? 'rgba(6,214,160,0.2)' : 'var(--border-subtle)'}`,
+                                                    borderRadius: 'var(--radius-full)',
+                                                    color: topic === t ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                                                    cursor: 'pointer', transition: 'all var(--transition-base)',
+                                                }}>
+                                                    {t}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <motion.button
+                                    onClick={handleAnalyze} disabled={isLoading} className="btn-primary"
+                                    style={{ width: '100%', marginTop: '1.75rem', padding: '1rem', fontSize: '0.875rem' }}
+                                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                                >
+                                    {isLoading ? (
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span className="ai-typing-dot" /><span className="ai-typing-dot" /><span className="ai-typing-dot" />
+                                            Analyzing...
+                                        </span>
+                                    ) : <><ChevronRight size={18} /> Continue</>}
+                                </motion.button>
+                            </motion.div>
+                        )}
+
+                        {/* Stage 2: Analysis */}
+                        {stage === 'analysis' && analysis && (
+                            <motion.div key="analysis" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                                <button onClick={() => setStage('input')} style={backButtonStyle}>
+                                    <ArrowLeft size={14} /> Back
+                                </button>
+                                <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 700, marginBottom: '1.75rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Analysis results</h1>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div style={cardStyle}>
+                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>Experience</div>
+                                        <div className="text-gradient" style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 700 }}>{analysis.experienceLevel}</div>
+                                    </div>
+                                    <div style={cardStyle}>
+                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>Skills Found</div>
+                                        <div className="text-gradient" style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 700 }}>{analysis.programmingLanguages.length + analysis.toolsFrameworks.length}</div>
                                     </div>
                                 </div>
-                            )}
 
-                            <button onClick={handleAnalyze} disabled={isLoading} className="btn-primary" style={{ width: '100%', marginTop: '1.5rem', padding: '1rem', fontSize: '0.95rem' }}>
-                                {isLoading ? 'Analyzing...' : <><ChevronRight size={20} /> Continue</>}
-                            </button>
-                        </motion.div>
-                    )}
-
-                    {/* Stage 2: Analysis */}
-                    {stage === 'analysis' && analysis && (
-                        <motion.div key="analysis" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <button onClick={() => setStage('input')} style={backButtonStyle}>
-                                <ArrowLeft size={16} /> Back
-                            </button>
-                            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', fontWeight: 600, marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Analysis results</h1>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div style={cardStyle}>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.375rem' }}>Experience</div>
-                                    <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 600, color: 'var(--accent-amber)' }}>{analysis.experienceLevel}</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.75rem' }}>
+                                    {[...analysis.programmingLanguages, ...analysis.toolsFrameworks].slice(0, 10).map((skill) => (
+                                        <span key={skill} className="badge badge-cyan">
+                                            {skill}
+                                        </span>
+                                    ))}
                                 </div>
-                                <div style={cardStyle}>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.375rem' }}>Skills Found</div>
-                                    <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)' }}>{analysis.programmingLanguages.length + analysis.toolsFrameworks.length}</div>
+
+                                <motion.button
+                                    onClick={() => setStage('role')} className="btn-primary"
+                                    style={{ width: '100%', padding: '1rem', fontSize: '0.875rem' }}
+                                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                                >
+                                    <ChevronRight size={18} /> Select Role
+                                </motion.button>
+                            </motion.div>
+                        )}
+
+                        {/* Stage 3: Role */}
+                        {stage === 'role' && (
+                            <motion.div key="role" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                                <button onClick={() => setStage('analysis')} style={backButtonStyle}>
+                                    <ArrowLeft size={14} /> Back
+                                </button>
+                                <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 700, marginBottom: '1.75rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Select role</h1>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', marginBottom: '1.75rem' }}>
+                                    {appConfig.roles.map((role) => (
+                                        <motion.div
+                                            key={role.id}
+                                            onClick={() => setSelectedRole(role.id)}
+                                            whileHover={{ y: -2 }}
+                                            style={{ ...(selectedRole === role.id ? cardActiveStyle : cardStyle), cursor: 'pointer', textAlign: 'center' }}
+                                        >
+                                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{role.icon}</div>
+                                            <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-primary)' }}>{role.name}</div>
+                                        </motion.div>
+                                    ))}
                                 </div>
-                            </div>
 
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                                {[...analysis.programmingLanguages, ...analysis.toolsFrameworks].slice(0, 10).map((skill) => (
-                                    <span key={skill} style={{
-                                        padding: '0.375rem 0.75rem', fontSize: '0.75rem',
-                                        background: 'var(--accent-amber-dim)', border: '1px solid var(--accent-amber-glow)',
-                                        borderRadius: '0.25rem', color: 'var(--accent-amber)'
-                                    }}>
-                                        {skill}
-                                    </span>
-                                ))}
-                            </div>
+                                <motion.button
+                                    onClick={() => setStage('mode')} disabled={!selectedRole} className="btn-primary"
+                                    style={{ width: '100%', padding: '1rem', fontSize: '0.875rem', opacity: selectedRole ? 1 : 0.4 }}
+                                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                                >
+                                    <ChevronRight size={18} /> Choose Mode
+                                </motion.button>
+                            </motion.div>
+                        )}
 
-                            <button onClick={() => setStage('role')} className="btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '0.95rem' }}>
-                                <ChevronRight size={20} /> Select Role
-                            </button>
-                        </motion.div>
-                    )}
+                        {/* Stage 4: Mode */}
+                        {stage === 'mode' && (
+                            <motion.div key="mode" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                                <button onClick={() => setStage('role')} style={backButtonStyle}>
+                                    <ArrowLeft size={14} /> Back
+                                </button>
+                                <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 700, marginBottom: '1.75rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Interview mode</h1>
 
-                    {/* Stage 3: Role */}
-                    {stage === 'role' && (
-                        <motion.div key="role" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <button onClick={() => setStage('analysis')} style={backButtonStyle}>
-                                <ArrowLeft size={16} /> Back
-                            </button>
-                            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', fontWeight: 600, marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Select role</h1>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.875rem', marginBottom: '1.75rem' }}>
+                                    {appConfig.modes.map((mode) => (
+                                        <motion.div
+                                            key={mode.id}
+                                            onClick={() => setSelectedMode(mode.id)}
+                                            whileHover={{ y: -2 }}
+                                            style={{ ...(selectedMode === mode.id ? cardActiveStyle : cardStyle), cursor: 'pointer', textAlign: 'center', padding: '1.25rem 0.75rem' }}
+                                        >
+                                            <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>{mode.icon}</div>
+                                            <div style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--text-primary)' }}>{mode.name}</div>
+                                        </motion.div>
+                                    ))}
+                                </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                                {appConfig.roles.map((role) => (
-                                    <div key={role.id} onClick={() => setSelectedRole(role.id)} style={{ ...(selectedRole === role.id ? cardActiveStyle : cardStyle), cursor: 'pointer', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{role.icon}</div>
-                                        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{role.name}</div>
+                                {/* Summary Card */}
+                                <div style={{ ...cardStyle, marginBottom: '1.75rem' }}>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.875rem', fontWeight: 500 }}>Session Summary</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem' }}>
+                                        <div><span style={{ color: 'var(--text-muted)' }}>Role:</span> <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{appConfig.roles.find(r => r.id === selectedRole)?.name}</span></div>
+                                        <div><span style={{ color: 'var(--text-muted)' }}>Questions:</span> <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{appConfig.questionsPerSession}</span></div>
+                                        <div><span style={{ color: 'var(--text-muted)' }}>Mode:</span> <span style={{ fontWeight: 500, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{selectedMode}</span></div>
+                                        <div><span style={{ color: 'var(--text-muted)' }}>Time:</span> <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{appConfig.questionTimeLimit / 60} min/q</span></div>
                                     </div>
-                                ))}
-                            </div>
-
-                            <button onClick={() => setStage('mode')} disabled={!selectedRole} className="btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '0.95rem', opacity: selectedRole ? 1 : 0.5 }}>
-                                <ChevronRight size={20} /> Choose Mode
-                            </button>
-                        </motion.div>
-                    )}
-
-                    {/* Stage 4: Mode */}
-                    {stage === 'mode' && (
-                        <motion.div key="mode" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <button onClick={() => setStage('role')} style={backButtonStyle}>
-                                <ArrowLeft size={16} /> Back
-                            </button>
-                            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', fontWeight: 600, marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Interview mode</h1>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                                {appConfig.modes.map((mode) => (
-                                    <div key={mode.id} onClick={() => setSelectedMode(mode.id)} style={{ ...(selectedMode === mode.id ? cardActiveStyle : cardStyle), cursor: 'pointer', textAlign: 'center', padding: '1.25rem 0.75rem' }}>
-                                        <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>{mode.icon}</div>
-                                        <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)' }}>{mode.name}</div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div style={{ ...cardStyle, marginBottom: '1.5rem' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem' }}>
-                                    <div><span style={{ color: 'var(--text-muted)' }}>Role:</span> <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{appConfig.roles.find(r => r.id === selectedRole)?.name}</span></div>
-                                    <div><span style={{ color: 'var(--text-muted)' }}>Questions:</span> <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{appConfig.questionsPerSession}</span></div>
-                                    <div><span style={{ color: 'var(--text-muted)' }}>Mode:</span> <span style={{ fontWeight: 500, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{selectedMode}</span></div>
-                                    <div><span style={{ color: 'var(--text-muted)' }}>Time:</span> <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{appConfig.questionTimeLimit / 60} min/q</span></div>
                                 </div>
-                            </div>
 
-                            <button onClick={handleStartInterview} disabled={isLoading} className="btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '0.95rem' }}>
-                                {isLoading ? 'Preparing...' : <><Play size={20} /> Start Interview</>}
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                                <motion.button
+                                    onClick={handleStartInterview} disabled={isLoading} className="btn-primary cta-glow"
+                                    style={{ width: '100%', padding: '1rem', fontSize: '0.875rem' }}
+                                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                                >
+                                    {isLoading ? (
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span className="ai-typing-dot" /><span className="ai-typing-dot" /><span className="ai-typing-dot" />
+                                            Preparing...
+                                        </span>
+                                    ) : <><Play size={18} /> Start Interview</>}
+                                </motion.button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
         </AppLayout>
     );
@@ -322,7 +390,11 @@ export default function NewInterviewPage() {
     return (
         <Suspense fallback={
             <AppLayout>
-                <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>Loading...</div>
+                <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '0.375rem' }}>
+                        <span className="ai-typing-dot" /><span className="ai-typing-dot" /><span className="ai-typing-dot" />
+                    </div>
+                </div>
             </AppLayout>
         }>
             <NewInterviewContent />

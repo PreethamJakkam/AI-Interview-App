@@ -129,6 +129,27 @@ export interface VoiceState {
     isSupported: boolean;
 }
 
+// Voice-to-Voice Interview types
+export interface VoiceConversationMessage {
+    id: string;
+    role: 'ai' | 'user';
+    content: string;
+    timestamp: Date;
+    type: 'greeting' | 'question' | 'answer' | 'feedback' | 'follow-up' | 'closing';
+}
+
+export type VoiceInterviewPhase = 'idle' | 'greeting' | 'questioning' | 'listening' | 'processing' | 'evaluating' | 'finished';
+
+export interface VoiceInterviewState {
+    messages: VoiceConversationMessage[];
+    currentPhase: VoiceInterviewPhase;
+    isAISpeaking: boolean;
+    isUserSpeaking: boolean;
+    currentQuestionIndex: number;
+    totalQuestions: number;
+    scores: number[];
+}
+
 // Timer types
 export interface TimerState {
     timeRemaining: number;

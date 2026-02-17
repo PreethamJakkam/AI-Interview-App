@@ -72,13 +72,14 @@ export default function HistoryDetailPage() {
         loadSession();
     }, [params.id]);
 
-    const cardStyle = {
-        background: 'var(--bg-card)',
-        borderWidth: '1px',
-        borderStyle: 'solid',
-        borderColor: 'var(--border-subtle)',
-        borderRadius: '0.75rem',
-        padding: '1.5rem'
+    const glassCard: React.CSSProperties = {
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid var(--glass-border)',
+        borderRadius: 'var(--radius-xl)',
+        padding: '1.5rem',
+        transition: 'all var(--transition-base)',
     };
 
     const getModeIcon = (mode: string) => {
@@ -89,11 +90,20 @@ export default function HistoryDetailPage() {
         }
     };
 
+    const getScoreColor = (s: number) => {
+        if (s >= 70) return 'var(--success)';
+        if (s >= 50) return 'var(--warning)';
+        return 'var(--error)';
+    };
+
     if (isLoading) {
         return (
             <AppLayout>
-                <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>Loading session details...</p>
+                <div style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem 0', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '0.375rem', marginBottom: '0.75rem' }}>
+                        <span className="ai-typing-dot" /><span className="ai-typing-dot" /><span className="ai-typing-dot" />
+                    </div>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Loading session details...</p>
                 </div>
             </AppLayout>
         );
@@ -102,11 +112,9 @@ export default function HistoryDetailPage() {
     if (!session) {
         return (
             <AppLayout>
-                <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>Session not found</p>
-                    <button onClick={() => router.push('/history')} className="btn-primary" style={{ marginTop: '1rem' }}>
-                        Back to History
-                    </button>
+                <div style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem 0', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>Session not found</p>
+                    <button onClick={() => router.push('/history')} className="btn-primary">Back to History</button>
                 </div>
             </AppLayout>
         );
@@ -114,11 +122,7 @@ export default function HistoryDetailPage() {
 
     const formatDate = (timestamp: { seconds: number }) => {
         return new Date(timestamp.seconds * 1000).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+            month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
         });
     };
 
@@ -130,145 +134,112 @@ export default function HistoryDetailPage() {
 
     return (
         <AppLayout>
-            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 0' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2.5rem 0' }}>
                 {/* Header */}
                 <motion.div
                     style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
                 >
                     <button
                         onClick={() => router.push('/history')}
                         style={{
-                            background: 'var(--bg-elevated)',
-                            border: '1px solid var(--border-subtle)',
-                            borderRadius: '0.5rem',
-                            padding: '0.5rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
+                            background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-md)', padding: '0.5rem', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
                     >
                         <ArrowLeft size={18} style={{ color: 'var(--text-secondary)' }} />
                     </button>
                     <div>
                         <h1 style={{
-                            fontFamily: 'var(--font-serif)',
-                            fontSize: '1.375rem',
-                            fontWeight: 600,
-                            color: 'var(--text-primary)'
+                            fontFamily: 'var(--font-heading)', fontSize: '1.375rem', fontWeight: 700,
+                            color: 'var(--text-primary)', letterSpacing: '-0.02em',
                         }}>
-                            Session <span style={{ color: 'var(--accent-amber)' }}>Details</span>
+                            Session <span className="text-gradient">Details</span>
                         </h1>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                            {formatDate(session.createdAt)}
-                        </p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatDate(session.createdAt)}</p>
                     </div>
                 </motion.div>
 
                 {/* Overview Card */}
                 <motion.div
-                    style={{ ...cardStyle, marginBottom: '1.5rem' }}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    style={{ ...glassCard, marginBottom: '1.5rem', background: 'var(--glass-bg-strong)' }}
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                         <div style={{
-                            width: '48px',
-                            height: '48px',
-                            borderRadius: '0.75rem',
-                            background: 'var(--accent-amber-dim)',
-                            border: '1px solid var(--accent-amber-glow)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--accent-amber)'
+                            width: '48px', height: '48px', borderRadius: 'var(--radius-lg)',
+                            background: 'linear-gradient(135deg, var(--accent-cyan-dim), var(--accent-violet-dim))',
+                            border: '1px solid var(--border-medium)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'var(--accent-cyan)',
                         }}>
                             {getModeIcon(session.mode)}
                         </div>
                         <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.25rem' }}>
                                 <span style={{
-                                    fontSize: '0.7rem',
-                                    padding: '0.125rem 0.5rem',
-                                    background: 'var(--bg-elevated)',
-                                    border: '1px solid var(--border-subtle)',
-                                    borderRadius: '0.25rem',
-                                    color: 'var(--text-muted)',
-                                    textTransform: 'uppercase'
+                                    fontSize: '0.625rem', padding: '0.15rem 0.5rem',
+                                    background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                                    borderRadius: 'var(--radius-full)', color: 'var(--text-muted)',
+                                    textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 500,
                                 }}>
                                     {session.mode}
                                 </span>
                                 {session.difficulty && (
                                     <span style={{
-                                        fontSize: '0.7rem',
-                                        padding: '0.125rem 0.5rem',
-                                        background: 'var(--accent-amber-dim)',
-                                        border: '1px solid var(--accent-amber-glow)',
-                                        borderRadius: '0.25rem',
-                                        color: 'var(--accent-amber)',
-                                        textTransform: 'capitalize'
+                                        fontSize: '0.625rem', padding: '0.15rem 0.5rem',
+                                        background: 'var(--accent-cyan-dim)', border: '1px solid rgba(6,214,160,0.15)',
+                                        borderRadius: 'var(--radius-full)', color: 'var(--accent-cyan)',
+                                        textTransform: 'capitalize', fontWeight: 500,
                                     }}>
                                         {session.difficulty}
                                     </span>
                                 )}
                             </div>
                             <h2 style={{
-                                fontFamily: 'var(--font-serif)',
-                                fontSize: '1.125rem',
-                                fontWeight: 600,
-                                color: 'var(--text-primary)'
+                                fontFamily: 'var(--font-heading)', fontSize: '1.0625rem', fontWeight: 600,
+                                color: 'var(--text-primary)', letterSpacing: '-0.01em',
                             }}>
                                 {session.topic || session.role || 'Practice Session'}
                             </h2>
                         </div>
                         <div style={{
-                            textAlign: 'center',
-                            padding: '0.75rem 1rem',
-                            background: session.score >= 70 ? 'rgba(34, 197, 94, 0.1)' : session.score >= 50 ? 'var(--accent-amber-dim)' : 'rgba(239, 68, 68, 0.1)',
-                            borderRadius: '0.75rem'
+                            textAlign: 'center', padding: '0.75rem 1rem', borderRadius: 'var(--radius-lg)',
+                            background: `${getScoreColor(session.score)}0C`,
                         }}>
                             <div style={{
-                                fontFamily: 'var(--font-serif)',
-                                fontSize: '1.5rem',
-                                fontWeight: 700,
-                                color: session.score >= 70 ? 'var(--success)' : session.score >= 50 ? 'var(--accent-amber)' : 'var(--error)'
+                                fontFamily: 'var(--font-heading)', fontSize: '1.5rem', fontWeight: 700,
+                                color: getScoreColor(session.score),
                             }}>
                                 {session.score}%
                             </div>
-                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Score</div>
+                            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Score</div>
                         </div>
                     </div>
 
                     {/* Stats Row */}
                     <div style={{ display: 'flex', gap: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
                         {session.totalTime && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Clock size={14} style={{ color: 'var(--text-muted)' }} />
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                    {formatTime(session.totalTime)}
-                                </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                <Clock size={13} style={{ color: 'var(--text-muted)' }} />
+                                <span style={{ fontSize: '0.775rem', color: 'var(--text-secondary)' }}>{formatTime(session.totalTime)}</span>
                             </div>
                         )}
                         {session.questions && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Target size={14} style={{ color: 'var(--text-muted)' }} />
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                    {session.questions.length} questions
-                                </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                <Target size={13} style={{ color: 'var(--text-muted)' }} />
+                                <span style={{ fontSize: '0.775rem', color: 'var(--text-secondary)' }}>{session.questions.length} questions</span>
                             </div>
                         )}
                     </div>
                 </motion.div>
 
-                {/* Questions/Challenges Review */}
+                {/* Section Title */}
                 <h3 style={{
-                    fontFamily: 'var(--font-serif)',
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    color: 'var(--text-primary)',
-                    marginBottom: '1rem'
+                    fontFamily: 'var(--font-heading)', fontSize: '0.875rem', fontWeight: 600,
+                    color: 'var(--text-primary)', marginBottom: '1rem',
+                    textTransform: 'uppercase', letterSpacing: '0.04em',
                 }}>
                     Review
                 </h3>
@@ -280,20 +251,18 @@ export default function HistoryDetailPage() {
                             const answer = session.answers?.find(a => a.questionId === q.id);
                             return (
                                 <motion.div
-                                    key={q.id}
-                                    style={cardStyle}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
+                                    key={q.id} style={glassCard}
+                                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.05 }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.75rem' }}>
                                         {answer?.isCorrect ? (
-                                            <CheckCircle size={18} style={{ color: 'var(--success)', marginTop: '2px' }} />
+                                            <CheckCircle size={16} style={{ color: 'var(--success)', marginTop: '2px' }} />
                                         ) : (
-                                            <XCircle size={18} style={{ color: 'var(--error)', marginTop: '2px' }} />
+                                            <XCircle size={16} style={{ color: 'var(--error)', marginTop: '2px' }} />
                                         )}
                                         <div style={{ flex: 1 }}>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                                            <p style={{ fontSize: '0.8125rem', color: 'var(--text-primary)', marginBottom: '0.5rem', lineHeight: 1.5 }}>
                                                 {q.question}
                                             </p>
                                             {q.options && (
@@ -302,17 +271,13 @@ export default function HistoryDetailPage() {
                                                         const isSelected = answer?.selectedOption === j;
                                                         const isCorrect = q.correctAnswer === j;
                                                         return (
-                                                            <div
-                                                                key={j}
-                                                                style={{
-                                                                    fontSize: '0.8rem',
-                                                                    padding: '0.375rem 0.625rem',
-                                                                    borderRadius: '0.25rem',
-                                                                    background: isCorrect ? 'rgba(34, 197, 94, 0.1)' : isSelected ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-elevated)',
-                                                                    border: `1px solid ${isCorrect ? 'var(--success)' : isSelected ? 'var(--error)' : 'var(--border-subtle)'}`,
-                                                                    color: 'var(--text-secondary)'
-                                                                }}
-                                                            >
+                                                            <div key={j} style={{
+                                                                fontSize: '0.775rem', padding: '0.375rem 0.625rem',
+                                                                borderRadius: 'var(--radius-md)',
+                                                                background: isCorrect ? 'rgba(34, 197, 94, 0.08)' : isSelected ? 'rgba(239, 68, 68, 0.08)' : 'var(--bg-elevated)',
+                                                                border: `1px solid ${isCorrect ? 'var(--success)' : isSelected ? 'var(--error)' : 'var(--border-subtle)'}`,
+                                                                color: 'var(--text-secondary)',
+                                                            }}>
                                                                 {String.fromCharCode(65 + j)}. {opt}
                                                             </div>
                                                         );
@@ -320,7 +285,7 @@ export default function HistoryDetailPage() {
                                                 </div>
                                             )}
                                             {q.explanation && (
-                                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                                <p style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic', lineHeight: 1.4 }}>
                                                     {q.explanation}
                                                 </p>
                                             )}
@@ -337,37 +302,27 @@ export default function HistoryDetailPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {session.submissions.map((sub, i) => (
                             <motion.div
-                                key={sub.challengeId}
-                                style={cardStyle}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                key={sub.challengeId} style={glassCard}
+                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.05 }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                    <h4 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Challenge {i + 1}</h4>
+                                    <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.8125rem' }}>Challenge {i + 1}</h4>
                                     <span style={{
-                                        padding: '0.25rem 0.625rem',
-                                        borderRadius: '0.375rem',
-                                        background: sub.score >= 70 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                        color: sub.score >= 70 ? 'var(--success)' : 'var(--error)',
-                                        fontSize: '0.8rem',
-                                        fontWeight: 600
+                                        padding: '0.2rem 0.625rem', borderRadius: 'var(--radius-full)',
+                                        background: `${getScoreColor(sub.score)}12`, border: `1px solid ${getScoreColor(sub.score)}25`,
+                                        color: getScoreColor(sub.score), fontSize: '0.775rem', fontWeight: 600,
                                     }}>
                                         {sub.score}%
                                     </span>
                                 </div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                                    {sub.passedTests}/{sub.totalTests} tests passed • {formatTime(sub.timeSpent)}
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                    {sub.passedTests}/{sub.totalTests} tests passed · {formatTime(sub.timeSpent)}
                                 </div>
                                 <pre style={{
-                                    padding: '1rem',
-                                    background: 'var(--bg-elevated)',
-                                    borderRadius: '0.5rem',
-                                    fontSize: '0.75rem',
-                                    fontFamily: 'var(--font-mono)',
-                                    color: 'var(--text-secondary)',
-                                    overflow: 'auto',
-                                    maxHeight: '200px'
+                                    padding: '1rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)',
+                                    fontSize: '0.725rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)',
+                                    overflow: 'auto', maxHeight: '200px', border: '1px solid var(--border-subtle)',
                                 }}>
                                     {sub.code}
                                 </pre>
@@ -381,25 +336,23 @@ export default function HistoryDetailPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {session.evaluations.map((evaluation, i) => (
                             <motion.div
-                                key={evaluation.questionId}
-                                style={cardStyle}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                key={evaluation.questionId} style={glassCard}
+                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.05 }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                    <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>Question {i + 1}</h4>
+                                    <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.8125rem' }}>Question {i + 1}</h4>
                                     <span style={{
-                                        fontWeight: 600,
-                                        color: evaluation.score >= 7 ? 'var(--success)' : evaluation.score >= 5 ? 'var(--accent-amber)' : 'var(--error)'
+                                        fontWeight: 600, fontSize: '0.8125rem',
+                                        color: evaluation.score >= 7 ? 'var(--success)' : evaluation.score >= 5 ? 'var(--warning)' : 'var(--error)'
                                     }}>
                                         {evaluation.score}/10
                                     </span>
                                 </div>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                <p style={{ fontSize: '0.775rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', lineHeight: 1.5 }}>
                                     {evaluation.answer}
                                 </p>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                <p style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.4 }}>
                                     {evaluation.feedback}
                                 </p>
                             </motion.div>

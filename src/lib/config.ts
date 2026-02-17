@@ -52,7 +52,7 @@ export const appConfig = {
     // Interview modes
     modes: [
         { id: "standard", name: "Standard", description: "Text-based answers", icon: "📝" },
-        { id: "voice", name: "Voice", description: "Speak your answers", icon: "🎤" },
+        { id: "voice", name: "Voice Interview", description: "Live AI conversation", icon: "🎙️" },
         { id: "coding", name: "Coding", description: "Code challenges", icon: "💻" },
     ],
 

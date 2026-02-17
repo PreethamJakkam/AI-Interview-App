@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Trophy, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Trophy, User, Crown, Medal, Award, TrendingUp } from 'lucide-react';
 import { AppLayout } from '@/components/layout';
 import { getLeaderboard } from '@/lib/firebase';
 import { getTier } from '@/lib/config';
@@ -21,6 +21,7 @@ export default function LeaderboardPage() {
     const { user } = useAuth();
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [hoveredRow, setHoveredRow] = useState<number | null>(null);
 
     useEffect(() => {
         const loadLeaderboard = async () => {
@@ -54,141 +55,171 @@ export default function LeaderboardPage() {
         loadLeaderboard();
     }, []);
 
-    const cardStyle = {
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: '0.75rem',
-        padding: '1.5rem'
-    };
+    const top3 = leaderboard.slice(0, 3);
+    const rest = leaderboard.slice(3);
+
+    const podiumIcons = [
+        <Crown key="1" size={22} />,
+        <Medal key="2" size={20} />,
+        <Award key="3" size={18} />,
+    ];
+    const podiumColors = ['var(--accent-cyan)', 'var(--accent-violet)', '#EC4899'];
 
     return (
         <AppLayout>
-            <div style={{ maxWidth: '600px', margin: '0 auto', padding: '2rem 0' }}>
+            <div className="page-enter">
                 {/* Header */}
-                <motion.div style={{ textAlign: 'center', marginBottom: '2.5rem' }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-                    <div style={{
-                        width: '56px', height: '56px', borderRadius: '50%',
-                        background: 'var(--accent-amber-dim)', border: '1px solid var(--accent-amber)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        margin: '0 auto 1.25rem'
-                    }}>
-                        <Trophy size={24} style={{ color: 'var(--accent-amber)' }} />
-                    </div>
-                    <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>Leaderboard</h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.375rem' }}>Top performers this month</p>
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: '2rem' }}>
+                    <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '0.375rem' }}>
+                        Leader<span className="text-gradient">board</span>
+                    </h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Top performers this month</p>
                 </motion.div>
 
-                {/* Top 3 Podium */}
-                {!isLoading && leaderboard.length >= 3 && (
-                    <motion.div
-                        style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '1rem', marginBottom: '2rem' }}
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-                    >
-                        {/* 2nd Place */}
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{
-                                width: '64px', height: '64px', borderRadius: '50%',
-                                background: 'var(--bg-elevated)', border: '2px solid var(--border-subtle)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                margin: '0 auto 0.5rem', fontSize: '1.5rem'
-                            }}>🥈</div>
-                            <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)' }}>{leaderboard[1]?.displayName?.split(' ')[0]}</div>
-                            <div style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1.125rem' }}>{leaderboard[1]?.averageScore}</div>
-                        </div>
-
-                        {/* 1st Place */}
-                        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                            <div style={{
-                                width: '80px', height: '80px', borderRadius: '50%',
-                                background: 'var(--accent-amber-dim)', border: '2px solid var(--accent-amber)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                margin: '0 auto 0.5rem', fontSize: '2rem'
-                            }}>🥇</div>
-                            <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{leaderboard[0]?.displayName?.split(' ')[0]}</div>
-                            <div style={{ fontFamily: 'var(--font-serif)', color: 'var(--accent-amber)', fontWeight: 700, fontSize: '1.375rem' }}>{leaderboard[0]?.averageScore}</div>
-                        </div>
-
-                        {/* 3rd Place */}
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{
-                                width: '64px', height: '64px', borderRadius: '50%',
-                                background: 'var(--bg-elevated)', border: '2px solid var(--border-subtle)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                margin: '0 auto 0.5rem', fontSize: '1.5rem'
-                            }}>🥉</div>
-                            <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)' }}>{leaderboard[2]?.displayName?.split(' ')[0]}</div>
-                            <div style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1.125rem' }}>{leaderboard[2]?.averageScore}</div>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Full List */}
-                <div style={cardStyle}>
-                    {isLoading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading...</div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {leaderboard.map((entry, i) => {
+                {isLoading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0', gap: '0.375rem' }}>
+                        <span className="ai-typing-dot" /><span className="ai-typing-dot" /><span className="ai-typing-dot" />
+                    </div>
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+                        {/* ========== LEFT — Podium Cards ========== */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {top3.map((entry, i) => {
                                 const tier = getTier(entry.averageScore);
-                                const isCurrentUser = user && entry.uid === user.uid;
-
                                 return (
                                     <motion.div
-                                        key={i}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: i * 0.03 }}
+                                        key={entry.rank}
+                                        initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: i * 0.1 }}
                                         style={{
-                                            display: 'flex', alignItems: 'center', gap: '0.75rem',
-                                            padding: '0.75rem', borderRadius: '0.5rem',
-                                            background: isCurrentUser ? 'var(--accent-amber-dim)' : 'transparent',
-                                            border: isCurrentUser ? '1px solid var(--accent-amber-glow)' : '1px solid transparent',
-                                            transition: 'all 0.2s'
+                                            background: 'var(--glass-bg-strong)', backdropFilter: 'blur(16px)',
+                                            border: `1px solid ${i === 0 ? 'rgba(6, 214, 160, 0.2)' : 'var(--glass-border)'}`,
+                                            borderRadius: 'var(--radius-lg)', padding: '1.5rem',
+                                            position: 'relative', overflow: 'hidden',
+                                            animation: i === 0 ? 'float-subtle 4s ease-in-out infinite' : 'none',
                                         }}
                                     >
-                                        {/* Rank */}
+                                        {/* Glow bar at top */}
                                         <div style={{
-                                            width: '32px', height: '32px', borderRadius: '50%',
-                                            background: entry.rank <= 3 ? 'var(--accent-amber-dim)' : 'var(--bg-elevated)',
-                                            border: entry.rank <= 3 ? '1px solid var(--accent-amber-glow)' : '1px solid var(--border-subtle)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: entry.rank <= 3 ? '1rem' : '0.7rem', fontWeight: 600,
-                                            color: entry.rank <= 3 ? 'var(--accent-amber)' : 'var(--text-muted)'
-                                        }}>
-                                            {entry.rank <= 3 ? ['🥇', '🥈', '🥉'][entry.rank - 1] : entry.rank}
-                                        </div>
+                                            position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
+                                            background: `linear-gradient(90deg, transparent, ${podiumColors[i]}, transparent)`,
+                                        }} />
 
-                                        {/* Avatar */}
-                                        <div style={{
-                                            width: '32px', height: '32px', borderRadius: '50%',
-                                            background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                        }}>
-                                            <User size={14} style={{ color: 'var(--text-muted)' }} />
-                                        </div>
-
-                                        {/* Name */}
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)' }}>
-                                                {entry.displayName}
-                                                {isCurrentUser && <span style={{ color: 'var(--accent-amber)', marginLeft: '0.5rem' }}>(You)</span>}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{
+                                                width: '44px', height: '44px', borderRadius: 'var(--radius-full)',
+                                                background: `${podiumColors[i]}15`, border: `1px solid ${podiumColors[i]}30`,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: podiumColors[i],
+                                                boxShadow: i === 0 ? `0 0 20px ${podiumColors[i]}20` : 'none',
+                                            }}>
+                                                {podiumIcons[i]}
                                             </div>
-                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{entry.totalInterviews} interviews</div>
-                                        </div>
-
-                                        {/* Score */}
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{entry.averageScore}</div>
-                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{tier.icon} {tier.name}</div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.875rem', marginBottom: '0.125rem' }}>
+                                                    {entry.displayName}
+                                                </div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                    {tier.name} · {entry.totalInterviews} sessions
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{
+                                                    fontFamily: 'var(--font-heading)', fontSize: '1.5rem', fontWeight: 700,
+                                                    color: podiumColors[i], letterSpacing: '-0.02em',
+                                                }}>
+                                                    {entry.averageScore}
+                                                </div>
+                                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>avg</div>
+                                            </div>
                                         </div>
                                     </motion.div>
                                 );
                             })}
                         </div>
-                    )}
-                </div>
+
+                        {/* ========== RIGHT — Full Rankings Table ========== */}
+                        <div style={{
+                            background: 'var(--glass-bg)', backdropFilter: 'blur(16px)',
+                            border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)',
+                            overflow: 'hidden',
+                        }}>
+                            {/* Table Header */}
+                            <div style={{
+                                display: 'grid', gridTemplateColumns: '50px 1fr 100px 100px 80px',
+                                padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border-subtle)',
+                                fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600,
+                            }}>
+                                <span>Rank</span>
+                                <span>Player</span>
+                                <span style={{ textAlign: 'center' }}>Avg Score</span>
+                                <span style={{ textAlign: 'center' }}>Best</span>
+                                <span style={{ textAlign: 'center' }}>Sessions</span>
+                            </div>
+
+                            {/* Rows */}
+                            {rest.map((entry, i) => {
+                                const isCurrentUser = user && entry.uid === user.uid;
+                                const isHovered = hoveredRow === i;
+                                const tier = getTier(entry.averageScore);
+                                return (
+                                    <motion.div
+                                        key={entry.rank}
+                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.3 + i * 0.04 }}
+                                        onMouseEnter={() => setHoveredRow(i)}
+                                        onMouseLeave={() => setHoveredRow(null)}
+                                        style={{
+                                            display: 'grid', gridTemplateColumns: '50px 1fr 100px 100px 80px',
+                                            padding: isHovered ? '1rem 1.25rem' : '0.75rem 1.25rem',
+                                            borderBottom: '1px solid var(--border-subtle)',
+                                            background: isCurrentUser ? 'var(--accent-cyan-dim)' : isHovered ? 'var(--bg-hover)' : 'transparent',
+                                            transition: 'all var(--transition-base)',
+                                            cursor: 'default',
+                                            alignItems: 'center',
+                                        }}
+                                    >
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                            #{entry.rank}
+                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{
+                                                width: '32px', height: '32px', borderRadius: 'var(--radius-full)',
+                                                background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            }}>
+                                                <User size={14} style={{ color: 'var(--text-muted)' }} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontWeight: 500, color: isCurrentUser ? 'var(--accent-cyan)' : 'var(--text-primary)', fontSize: '0.8125rem' }}>
+                                                    {entry.displayName}{isCurrentUser ? ' (You)' : ''}
+                                                </div>
+                                                {isHovered && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                                                        style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}
+                                                    >
+                                                        {tier.name}
+                                                    </motion.div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'center', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                                            {entry.averageScore}
+                                        </div>
+                                        <div style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8125rem', color: 'var(--accent-cyan)' }}>
+                                            {entry.bestScore}
+                                        </div>
+                                        <div style={{ textAlign: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                                            {entry.totalInterviews}
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         </AppLayout>
     );
 }
-

@@ -5,6 +5,8 @@ import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider,
     signOut,
     onAuthStateChanged,
@@ -65,9 +67,40 @@ export const signInWithEmail = async (email: string, password: string) => {
 
 export const signInWithGoogle = async () => {
     if (!auth) throw new Error('Firebase not initialized');
-    const result = await signInWithPopup(auth, googleProvider);
-    await createUserDocument(result.user);
-    return result.user;
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        await createUserDocument(result.user);
+        return result.user;
+    } catch (error: any) {
+        // If popup fails (COOP policy, blocked popups, etc.), fall back to redirect
+        if (
+            error?.code === 'auth/popup-blocked' ||
+            error?.code === 'auth/popup-closed-by-user' ||
+            error?.message?.includes('INTERNAL ASSERTION FAILED') ||
+            error?.code === 'auth/cancelled-popup-request'
+        ) {
+            console.warn('Popup sign-in failed, falling back to redirect.', error?.code || error?.message);
+            await signInWithRedirect(auth, googleProvider);
+            return null; // Redirect will reload the page
+        }
+        throw error;
+    }
+};
+
+// Handle redirect result on page load (for redirect-based auth fallback)
+export const handleRedirectResult = async () => {
+    if (!auth) return null;
+    try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+            await createUserDocument(result.user);
+            return result.user;
+        }
+        return null;
+    } catch (error) {
+        console.error('handleRedirectResult error:', error);
+        return null;
+    }
 };
 
 export const logOut = async () => {
@@ -154,14 +187,34 @@ export const saveInterviewSession = async (session: {
 
 export const getUserInterviews = async (uid: string, limitCount: number = 20) => {
     if (!db) return [];
-    const q = query(
-        collection(db, 'interviews'),
-        where('odiserId', '==', uid),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+        const q = query(
+            collection(db, 'interviews'),
+            where('odiserId', '==', uid),
+            orderBy('createdAt', 'desc'),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error: any) {
+        // Fallback: query without orderBy if composite index is missing
+        console.warn('getUserInterviews: Composite index may be missing, falling back to unordered query.', error?.message);
+        try {
+            const q = query(
+                collection(db, 'interviews'),
+                where('odiserId', '==', uid),
+                limit(limitCount)
+            );
+            const snapshot = await getDocs(q);
+            const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Sort client-side
+            results.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            return results;
+        } catch (fallbackError) {
+            console.error('getUserInterviews fallback also failed:', fallbackError);
+            return [];
+        }
+    }
 };
 
 // Leaderboard Functions
@@ -195,13 +248,17 @@ export const savePracticeSession = async (session: {
     status: string;
     [key: string]: unknown;
 }) => {
-    if (!db) return null;
+    if (!db) {
+        console.error('savePracticeSession: Firebase not initialized (db is null)');
+        throw new Error('Firebase not initialized');
+    }
     const sessionsRef = collection(db, 'practice_sessions');
     const docRef = await addDoc(sessionsRef, {
         ...session,
         createdAt: Timestamp.now(),
         completedAt: Timestamp.now()
     });
+    console.log('Practice session saved with ID:', docRef.id);
     return docRef.id;
 };
 
@@ -211,25 +268,55 @@ export const getPracticeHistory = async (
     limitCount: number = 30
 ) => {
     if (!db) return [];
-    let q;
-    if (modeFilter) {
-        q = query(
-            collection(db, 'practice_sessions'),
-            where('odiserId', '==', uid),
-            where('mode', '==', modeFilter),
-            orderBy('createdAt', 'desc'),
-            limit(limitCount)
-        );
-    } else {
-        q = query(
-            collection(db, 'practice_sessions'),
-            where('odiserId', '==', uid),
-            orderBy('createdAt', 'desc'),
-            limit(limitCount)
-        );
+    try {
+        let q;
+        if (modeFilter) {
+            q = query(
+                collection(db, 'practice_sessions'),
+                where('odiserId', '==', uid),
+                where('mode', '==', modeFilter),
+                orderBy('createdAt', 'desc'),
+                limit(limitCount)
+            );
+        } else {
+            q = query(
+                collection(db, 'practice_sessions'),
+                where('odiserId', '==', uid),
+                orderBy('createdAt', 'desc'),
+                limit(limitCount)
+            );
+        }
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error: any) {
+        // Fallback: query without orderBy if composite index is missing
+        console.warn('getPracticeHistory: Composite index may be missing, falling back.', error?.message);
+        try {
+            let q;
+            if (modeFilter) {
+                q = query(
+                    collection(db, 'practice_sessions'),
+                    where('odiserId', '==', uid),
+                    where('mode', '==', modeFilter),
+                    limit(limitCount)
+                );
+            } else {
+                q = query(
+                    collection(db, 'practice_sessions'),
+                    where('odiserId', '==', uid),
+                    limit(limitCount)
+                );
+            }
+            const snapshot = await getDocs(q);
+            const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Sort client-side
+            results.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            return results;
+        } catch (fallbackError) {
+            console.error('getPracticeHistory fallback also failed:', fallbackError);
+            return [];
+        }
     }
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 export const getSessionById = async (sessionId: string) => {

@@ -40,7 +40,7 @@ export function Timer({ timeRemaining, isCritical, formatTime, totalTime = 300 }
                     cy="40"
                     r="45"
                     fill="none"
-                    strokeWidth="4"
+                    strokeWidth="3"
                     style={{ stroke: 'var(--bg-elevated)' }}
                 />
                 {/* Progress Circle */}
@@ -49,13 +49,14 @@ export function Timer({ timeRemaining, isCritical, formatTime, totalTime = 300 }
                     cy="40"
                     r="45"
                     fill="none"
-                    strokeWidth="4"
+                    strokeWidth="3"
                     strokeLinecap="round"
                     style={{
-                        stroke: isCritical ? 'var(--error)' : 'var(--accent-amber)',
+                        stroke: isCritical ? 'var(--error)' : 'var(--accent-cyan)',
                         strokeDasharray: circumference,
                         strokeDashoffset: strokeDashoffset,
                         transition: 'stroke-dashoffset 1s linear, stroke 0.3s ease',
+                        filter: isCritical ? 'drop-shadow(0 0 6px var(--error))' : 'drop-shadow(0 0 4px rgba(6, 214, 160, 0.3))',
                     }}
                 />
             </svg>
@@ -63,14 +64,13 @@ export function Timer({ timeRemaining, isCritical, formatTime, totalTime = 300 }
             {/* Time Display */}
             <div style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: '1rem',
+                fontSize: '0.9375rem',
                 fontWeight: 600,
                 color: isCritical ? 'var(--error)' : 'var(--text-primary)',
-                letterSpacing: '-0.02em'
+                letterSpacing: '-0.02em',
             }}>
                 {formatTime(timeRemaining)}
             </div>
         </motion.div>
     );
 }
-
