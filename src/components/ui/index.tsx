@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-import { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes } from 'react';
+import { ReactNode, ButtonHTMLAttributes } from 'react';
 
 // Button
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

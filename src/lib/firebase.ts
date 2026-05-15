@@ -71,15 +71,16 @@ export const signInWithGoogle = async () => {
         const result = await signInWithPopup(auth, googleProvider);
         await createUserDocument(result.user);
         return result.user;
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const firebaseError = error as { code?: string; message?: string };
         // If popup fails (COOP policy, blocked popups, etc.), fall back to redirect
         if (
-            error?.code === 'auth/popup-blocked' ||
-            error?.code === 'auth/popup-closed-by-user' ||
-            error?.message?.includes('INTERNAL ASSERTION FAILED') ||
-            error?.code === 'auth/cancelled-popup-request'
+            firebaseError?.code === 'auth/popup-blocked' ||
+            firebaseError?.code === 'auth/popup-closed-by-user' ||
+            firebaseError?.message?.includes('INTERNAL ASSERTION FAILED') ||
+            firebaseError?.code === 'auth/cancelled-popup-request'
         ) {
-            console.warn('Popup sign-in failed, falling back to redirect.', error?.code || error?.message);
+            console.warn('Popup sign-in failed, falling back to redirect.', firebaseError?.code || firebaseError?.message);
             await signInWithRedirect(auth, googleProvider);
             return null; // Redirect will reload the page
         }
@@ -113,31 +114,54 @@ export const onAuthChange = (callback: (user: FirebaseUser | null) => void) => {
     return onAuthStateChanged(auth, callback);
 };
 
+// Helper to check if an error is a Firebase permission error
+const isPermissionError = (error: unknown): boolean => {
+    const msg = (error as { code?: string; message?: string })?.code || (error as { message?: string })?.message || '';
+    return msg.includes('permission') || msg.includes('PERMISSION_DENIED') || msg.includes('insufficient');
+};
+
 // Firestore Functions
 export const createUserDocument = async (user: FirebaseUser) => {
     if (!db) return;
-    const userRef = doc(db, 'users', user.uid);
-    const userSnap = await getDoc(userRef);
+    try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
 
-    if (!userSnap.exists()) {
-        await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            createdAt: Timestamp.now(),
-            totalInterviews: 0,
-            averageScore: 0,
-            bestScore: 0,
-        });
+        if (!userSnap.exists()) {
+            await setDoc(userRef, {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                createdAt: Timestamp.now(),
+                totalInterviews: 0,
+                averageScore: 0,
+                bestScore: 0,
+            });
+        }
+    } catch (error) {
+        if (isPermissionError(error)) {
+            console.warn('createUserDocument: Firestore permission denied. Please update your Firestore security rules.');
+        } else {
+            console.error('createUserDocument error:', error);
+        }
     }
 };
 
 export const getUserData = async (uid: string) => {
     if (!db) return null;
-    const userRef = doc(db, 'users', uid);
-    const userSnap = await getDoc(userRef);
-    return userSnap.exists() ? userSnap.data() : null;
+    try {
+        const userRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userRef);
+        return userSnap.exists() ? userSnap.data() : null;
+    } catch (error) {
+        if (isPermissionError(error)) {
+            console.warn('getUserData: Firestore permission denied. Please update your Firestore security rules.');
+        } else {
+            console.error('getUserData error:', error);
+        }
+        return null;
+    }
 };
 
 export const updateUserStats = async (
@@ -146,21 +170,29 @@ export const updateUserStats = async (
     incrementInterviews: boolean = true
 ) => {
     if (!db) return;
-    const userRef = doc(db, 'users', uid);
-    const userSnap = await getDoc(userRef);
+    try {
+        const userRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userRef);
 
-    if (userSnap.exists()) {
-        const data = userSnap.data();
-        const totalInterviews = incrementInterviews ? (data.totalInterviews || 0) + 1 : data.totalInterviews;
-        const currentTotal = (data.averageScore || 0) * (data.totalInterviews || 0);
-        const newAverage = (currentTotal + newScore) / totalInterviews;
-        const bestScore = Math.max(data.bestScore || 0, newScore);
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            const totalInterviews = incrementInterviews ? (data.totalInterviews || 0) + 1 : data.totalInterviews;
+            const currentTotal = (data.averageScore || 0) * (data.totalInterviews || 0);
+            const newAverage = (currentTotal + newScore) / totalInterviews;
+            const bestScore = Math.max(data.bestScore || 0, newScore);
 
-        await updateDoc(userRef, {
-            totalInterviews,
-            averageScore: Math.round(newAverage * 10) / 10,
-            bestScore
-        });
+            await updateDoc(userRef, {
+                totalInterviews,
+                averageScore: Math.round(newAverage * 10) / 10,
+                bestScore
+            });
+        }
+    } catch (error) {
+        if (isPermissionError(error)) {
+            console.warn('updateUserStats: Firestore permission denied. Please update your Firestore security rules.');
+        } else {
+            console.error('updateUserStats error:', error);
+        }
     }
 };
 
@@ -176,13 +208,22 @@ export const saveInterviewSession = async (session: {
     topic?: string;
 }) => {
     if (!db) return null;
-    const sessionsRef = collection(db, 'interviews');
-    const docRef = await addDoc(sessionsRef, {
-        ...session,
-        createdAt: Timestamp.now(),
-        completedAt: Timestamp.now()
-    });
-    return docRef.id;
+    try {
+        const sessionsRef = collection(db, 'interviews');
+        const docRef = await addDoc(sessionsRef, {
+            ...session,
+            createdAt: Timestamp.now(),
+            completedAt: Timestamp.now()
+        });
+        return docRef.id;
+    } catch (error) {
+        if (isPermissionError(error)) {
+            console.warn('saveInterviewSession: Firestore permission denied. Please update your Firestore security rules.');
+        } else {
+            console.error('saveInterviewSession error:', error);
+        }
+        return null;
+    }
 };
 
 export const getUserInterviews = async (uid: string, limitCount: number = 20) => {
@@ -196,9 +237,10 @@ export const getUserInterviews = async (uid: string, limitCount: number = 20) =>
         );
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const fbError = error as { message?: string };
         // Fallback: query without orderBy if composite index is missing
-        console.warn('getUserInterviews: Composite index may be missing, falling back to unordered query.', error?.message);
+        console.warn('getUserInterviews: Composite index may be missing, falling back to unordered query.', fbError?.message);
         try {
             const q = query(
                 collection(db, 'interviews'),
@@ -208,6 +250,7 @@ export const getUserInterviews = async (uid: string, limitCount: number = 20) =>
             const snapshot = await getDocs(q);
             const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             // Sort client-side
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             results.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
             return results;
         } catch (fallbackError) {
@@ -220,16 +263,25 @@ export const getUserInterviews = async (uid: string, limitCount: number = 20) =>
 // Leaderboard Functions
 export const getLeaderboard = async (limitCount: number = 50) => {
     if (!db) return [];
-    const q = query(
-        collection(db, 'users'),
-        orderBy('averageScore', 'desc'),
-        limit(limitCount)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc, index) => ({
-        ...doc.data(),
-        rank: index + 1
-    }));
+    try {
+        const q = query(
+            collection(db, 'users'),
+            orderBy('averageScore', 'desc'),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map((doc, index) => ({
+            ...doc.data(),
+            rank: index + 1
+        }));
+    } catch (error) {
+        if (isPermissionError(error)) {
+            console.warn('getLeaderboard: Firestore permission denied. Please update your Firestore security rules.');
+        } else {
+            console.error('getLeaderboard error:', error);
+        }
+        return [];
+    }
 };
 
 // Practice Session Functions
@@ -249,17 +301,26 @@ export const savePracticeSession = async (session: {
     [key: string]: unknown;
 }) => {
     if (!db) {
-        console.error('savePracticeSession: Firebase not initialized (db is null)');
-        throw new Error('Firebase not initialized');
+        console.warn('savePracticeSession: Firebase not initialized (db is null)');
+        return null;
     }
-    const sessionsRef = collection(db, 'practice_sessions');
-    const docRef = await addDoc(sessionsRef, {
-        ...session,
-        createdAt: Timestamp.now(),
-        completedAt: Timestamp.now()
-    });
-    console.log('Practice session saved with ID:', docRef.id);
-    return docRef.id;
+    try {
+        const sessionsRef = collection(db, 'practice_sessions');
+        const docRef = await addDoc(sessionsRef, {
+            ...session,
+            createdAt: Timestamp.now(),
+            completedAt: Timestamp.now()
+        });
+        console.log('Practice session saved with ID:', docRef.id);
+        return docRef.id;
+    } catch (error) {
+        if (isPermissionError(error)) {
+            console.warn('savePracticeSession: Firestore permission denied. Please update your Firestore security rules.');
+        } else {
+            console.error('savePracticeSession error:', error);
+        }
+        return null;
+    }
 };
 
 export const getPracticeHistory = async (
@@ -288,9 +349,10 @@ export const getPracticeHistory = async (
         }
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const fbError = error as { message?: string };
         // Fallback: query without orderBy if composite index is missing
-        console.warn('getPracticeHistory: Composite index may be missing, falling back.', error?.message);
+        console.warn('getPracticeHistory: Composite index may be missing, falling back.', fbError?.message);
         try {
             let q;
             if (modeFilter) {
@@ -310,6 +372,7 @@ export const getPracticeHistory = async (
             const snapshot = await getDocs(q);
             const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             // Sort client-side
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             results.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
             return results;
         } catch (fallbackError) {
@@ -321,10 +384,20 @@ export const getPracticeHistory = async (
 
 export const getSessionById = async (sessionId: string) => {
     if (!db) return null;
-    const docRef = doc(db, 'practice_sessions', sessionId);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+    try {
+        const docRef = doc(db, 'practice_sessions', sessionId);
+        const docSnap = await getDoc(docRef);
+        return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+    } catch (error) {
+        if (isPermissionError(error)) {
+            console.warn('getSessionById: Firestore permission denied. Please update your Firestore security rules.');
+        } else {
+            console.error('getSessionById error:', error);
+        }
+        return null;
+    }
 };
 
-export default { auth, db };
+const firebaseExports = { auth, db };
+export default firebaseExports;
 

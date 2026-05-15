@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, ChevronRight, ArrowLeft, Clock, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Clock, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
 import { AppLayout } from '@/components/layout';
 import { appConfig } from '@/lib/config';
 import { generateQuizQuestions } from '@/lib/gemini';
@@ -34,6 +34,17 @@ export default function QuizModePage() {
 
     const QUESTION_TIME = 60;
 
+    const handleAnswer = useCallback((optionIndex: number) => {
+        if (showExplanation) return;
+        const currentQuestion = questions[currentIndex];
+        const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
+        const isCorrect = optionIndex === currentQuestion.correctAnswer;
+        setSelectedOption(optionIndex);
+        setShowExplanation(true);
+        const answer: QuizAnswer = { questionId: currentQuestion.id, selectedOption: optionIndex, isCorrect, timeSpent };
+        setAnswers(prev => [...prev, answer]);
+    }, [currentIndex, questions, questionStartTime, showExplanation]);
+
     useEffect(() => {
         if (stage !== 'quiz' || showExplanation) return;
         const interval = setInterval(() => {
@@ -43,7 +54,7 @@ export default function QuizModePage() {
             });
         }, 1000);
         return () => clearInterval(interval);
-    }, [stage, currentIndex, showExplanation]);
+    }, [stage, currentIndex, showExplanation, handleAnswer]);
 
     const startQuiz = async () => {
         const topicToUse = isCustomTopicMode ? customTopic.trim() : selectedTopic;
@@ -65,17 +76,6 @@ export default function QuizModePage() {
             setIsLoading(false);
         }
     };
-
-    const handleAnswer = useCallback((optionIndex: number) => {
-        if (showExplanation) return;
-        const currentQuestion = questions[currentIndex];
-        const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
-        const isCorrect = optionIndex === currentQuestion.correctAnswer;
-        setSelectedOption(optionIndex);
-        setShowExplanation(true);
-        const answer: QuizAnswer = { questionId: currentQuestion.id, selectedOption: optionIndex, isCorrect, timeSpent };
-        setAnswers(prev => [...prev, answer]);
-    }, [currentIndex, questions, questionStartTime, showExplanation]);
 
     const nextQuestion = () => {
         if (currentIndex < questions.length - 1) {

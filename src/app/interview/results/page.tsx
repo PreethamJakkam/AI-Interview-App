@@ -1,15 +1,15 @@
-'use client';
+vs'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Trophy, RotateCcw, CheckCircle, Lightbulb, BookOpen, Target, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, RotateCcw, CheckCircle, Lightbulb, BookOpen, Target, TrendingUp, ChevronDown } from 'lucide-react';
 import { AppLayout } from '@/components/layout';
 import { generateFeedback, generateImprovementPlan } from '@/lib/gemini';
+import type { AnswerEvaluation, InterviewFeedback, ImprovementPlan } from '@/types';
 import { saveInterviewSession, updateUserStats } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import toast from 'react-hot-toast';
 
 function AnimatedScore({ target, color }: { target: number; color: string }) {
     const [count, setCount] = useState(0);
@@ -56,52 +56,69 @@ function AnimatedScore({ target, color }: { target: number; color: string }) {
     );
 }
 
+interface ResultQuestion {
+    question: string;
+    text?: string;
+    difficulty: string;
+    skill: string;
+    expectedConcepts: string[];
+}
+
+interface InterviewResults {
+    role: string;
+    mode: string;
+    questions: ResultQuestion[];
+    answers: { questionIndex: number; answer: string; timeSpent: number; evaluation: AnswerEvaluation }[];
+    analysis?: Record<string, unknown>;
+}
+
 export default function InterviewResultsPage() {
     const router = useRouter();
     const { user } = useAuth();
-    const [results, setResults] = useState<any>(null);
-    const [feedback, setFeedback] = useState<any>(null);
-    const [improvementPlan, setImprovementPlan] = useState<any>(null);
+    const [results, setResults] = useState<InterviewResults | null>(null);
+    const [feedback, setFeedback] = useState<InterviewFeedback | null>(null);
+    const [improvementPlan, setImprovementPlan] = useState<ImprovementPlan | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'plan'>('overview');
     const [expandedQ, setExpandedQ] = useState<number | null>(null);
 
-    useEffect(() => {
-        const loadResults = async () => {
-            const data = sessionStorage.getItem('interviewResults');
-            if (!data) { router.push('/interview/new'); return; }
-            const parsed = JSON.parse(data);
-            setResults(parsed);
-            try {
-                const evaluations = parsed.answers.map((a: any) => a.evaluation);
-                const missingConcepts = evaluations.flatMap((e: any) => e?.missingConcepts || []);
-                const weakAreas = evaluations.flatMap((e: any) => e?.weaknesses || []);
-                const [feedbackData, planData] = await Promise.all([
-                    generateFeedback(evaluations, parsed.role),
-                    generateImprovementPlan(missingConcepts, weakAreas, parsed.role)
-                ]);
-                setFeedback(feedbackData);
-                setImprovementPlan(planData);
-                if (user) {
-                    await saveInterviewSession({
-                        odiserId: user.uid,
-                        role: parsed.role,
-                        mode: parsed.mode,
-                        questions: parsed.questions,
-                        evaluations: parsed.answers.map((a: any) => a.evaluation),
-                        overallScore: feedbackData.overallScore,
-                        status: 'completed'
-                    });
-                    await updateUserStats(user.uid, feedbackData.overallScore);
-                }
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setIsLoading(false);
+    const loadResults = useCallback(async () => {
+        const data = sessionStorage.getItem('interviewResults');
+        if (!data) { router.push('/interview/new'); return; }
+        const parsed = JSON.parse(data) as InterviewResults;
+        setResults(parsed);
+        try {
+            const evaluations = parsed.answers.map((a) => a.evaluation);
+            const missingConcepts = evaluations.flatMap((e) => e?.missingConcepts || []);
+            const weakAreas = evaluations.flatMap((e) => e?.weaknesses || []);
+            const [feedbackData, planData] = await Promise.all([
+                generateFeedback(evaluations, parsed.role),
+                generateImprovementPlan(missingConcepts, weakAreas, parsed.role)
+            ]);
+            setFeedback(feedbackData);
+            setImprovementPlan(planData);
+            if (user) {
+                await saveInterviewSession({
+                    odiserId: user.uid,
+                    role: parsed.role,
+                    mode: parsed.mode,
+                    questions: parsed.questions,
+                    evaluations: parsed.answers.map((a) => a.evaluation),
+                    overallScore: feedbackData.overallScore,
+                    status: 'completed'
+                });
+                await updateUserStats(user.uid, feedbackData.overallScore);
             }
-        };
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [router, user]);
+
+    useEffect(() => {
         loadResults();
-    }, []);
+    }, [loadResults]);
 
     const scoreColor = (s: number) => s >= 80 ? 'var(--success)' : s >= 60 ? 'var(--warning)' : 'var(--error)';
     const scoreLabel = (s: number) => s >= 90 ? 'Excellent!' : s >= 80 ? 'Great job!' : s >= 70 ? 'Good work' : s >= 60 ? 'Keep practicing' : 'Needs improvement';
@@ -180,7 +197,7 @@ export default function InterviewResultsPage() {
                                         color: 'var(--success)', fontSize: '0.7rem', fontWeight: 500,
                                     }}>{s}</span>
                                 ))}
-                                {feedback.weaknesses?.slice(0, 2).map((w: string, i: number) => (
+                                {feedback.improvements?.slice(0, 2).map((w: string, i: number) => (
                                     <span key={`w-${i}`} style={{
                                         padding: '0.25rem 0.75rem', borderRadius: 'var(--radius-full)',
                                         background: 'var(--warning-dim)', border: '1px solid rgba(245, 158, 11, 0.2)',
@@ -254,7 +271,7 @@ export default function InterviewResultsPage() {
                                         <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>Areas to Improve</h3>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-                                        {(feedback.weaknesses || feedback.improvements || []).map((w: string, i: number) => (
+                                        {(feedback.improvements || []).map((w: string, i: number) => (
                                             <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                                                 style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                                                 <span style={{ color: 'var(--warning)', marginTop: '0.125rem' }}>•</span> {w}
@@ -269,7 +286,7 @@ export default function InterviewResultsPage() {
                     {activeTab === 'questions' && results && (
                         <motion.div key="questions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                {results.questions.map((q: any, i: number) => {
+                                {results.questions.map((q: ResultQuestion, i: number) => {
                                     const answer = results.answers[i];
                                     const eval_ = answer?.evaluation;
                                     const isExpanded = expandedQ === i;
@@ -287,7 +304,7 @@ export default function InterviewResultsPage() {
                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                             >
                                                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '24px' }}>Q{i + 1}</div>
-                                                <div style={{ flex: 1, fontSize: '0.8125rem', color: 'var(--text-primary)', fontWeight: 500 }}>{q.text || q.question || q}</div>
+                                                <div style={{ flex: 1, fontSize: '0.8125rem', color: 'var(--text-primary)', fontWeight: 500 }}>{q.text || q.question || 'Question'}</div>
                                                 <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, color: scoreColor(qScore), fontSize: '0.875rem', minWidth: '40px', textAlign: 'right' }}>{qScore}%</div>
                                                 <div style={{ color: 'var(--text-muted)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform var(--transition-base)' }}>
                                                     <ChevronDown size={14} />
@@ -323,7 +340,7 @@ export default function InterviewResultsPage() {
                     {activeTab === 'plan' && improvementPlan && (
                         <motion.div key="plan" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                                {(improvementPlan.steps || improvementPlan.plan || []).map((step: any, i: number) => (
+                                {(improvementPlan.priorityTopics || []).map((step, i: number) => (
                                     <motion.div
                                         key={i}
                                         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
@@ -334,11 +351,11 @@ export default function InterviewResultsPage() {
                                                 {i + 1}
                                             </div>
                                             <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-                                                {typeof step === 'string' ? step : step.title || step.topic || `Step ${i + 1}`}
+                                                {step.topic || `Step ${i + 1}`}
                                             </h3>
                                         </div>
-                                        {typeof step !== 'string' && step.description && (
-                                            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>{step.description}</p>
+                                        {step.projectIdea && (
+                                            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>{step.projectIdea}</p>
                                         )}
                                     </motion.div>
                                 ))}

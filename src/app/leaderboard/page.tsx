@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, User, Crown, Medal, Award, TrendingUp } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { User, Crown, Medal, Award } from 'lucide-react';
 import { AppLayout } from '@/components/layout';
 import { getLeaderboard } from '@/lib/firebase';
 import { getTier } from '@/lib/config';

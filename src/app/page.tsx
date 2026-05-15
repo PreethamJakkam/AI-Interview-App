@@ -155,7 +155,7 @@ export default function HomePage() {
           variants={stagger} initial="hidden" animate="visible"
           style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.875rem' }}
         >
-          {appConfig.roles.slice(0, 8).map((role, i) => (
+          {appConfig.roles.slice(0, 8).map((role) => (
             <motion.div key={role.id} variants={fadeUp} whileHover={{ y: -4, transition: { duration: 0.2 } }}>
               <Link href={`/interview/new?role=${role.id}`} style={{ textDecoration: 'none' }}>
                 <div style={{

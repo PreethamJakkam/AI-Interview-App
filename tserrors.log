@@ -1,0 +1,2 @@
+﻿src/app/interview/results/page.tsx(307,144): error TS2322: Type 'string | ResultQuestion' is not assignable to type 'ReactNode'.
+  Type 'ResultQuestion' is not assignable to type 'ReactNode'.

@@ -73,12 +73,14 @@ export function useVoiceInterview(config: UseVoiceInterviewConfig): UseVoiceInte
     const [isSupported, setIsSupported] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognitionRef = useRef<any>(null);
     const fullTranscriptRef = useRef('');
 
     // Check browser support
     useEffect(() => {
         if (typeof window !== 'undefined') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
             const hasTTS = 'speechSynthesis' in window;
             setIsSupported(!!SpeechRecognitionAPI && hasTTS);
@@ -89,6 +91,7 @@ export function useVoiceInterview(config: UseVoiceInterviewConfig): UseVoiceInte
                 recognition.interimResults = true;
                 recognition.lang = 'en-US';
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 recognition.onresult = (event: any) => {
                     let interim = '';
                     let final = '';
@@ -108,6 +111,7 @@ export function useVoiceInterview(config: UseVoiceInterviewConfig): UseVoiceInte
                     setInterimTranscript(fullTranscriptRef.current + interim);
                 };
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 recognition.onerror = (event: any) => {
                     if (event.error !== 'aborted') {
                         setError(`Speech recognition error: ${event.error}`);

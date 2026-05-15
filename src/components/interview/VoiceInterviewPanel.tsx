@@ -31,7 +31,8 @@ export function VoiceInterviewPanel({
     isUserSpeaking,
     currentQuestionIndex,
     totalQuestions,
-    scores,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    scores: _scores,
     overallScore,
     interimTranscript,
     error,

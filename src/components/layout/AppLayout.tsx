@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Home, Play, History, Trophy, LogOut, User, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -156,7 +157,7 @@ export function AppLayout({ children }: LayoutProps) {
                                     overflow: 'hidden',
                                 }}>
                                     {user.photoURL ? (
-                                        <img src={user.photoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <Image src={user.photoURL} alt="" width={40} height={40} style={{ objectFit: 'cover' }} />
                                     ) : (
                                         <User size={14} style={{ color: 'var(--text-muted)' }} />
                                     )}
@@ -251,7 +252,7 @@ export function AppLayout({ children }: LayoutProps) {
                                     border: '1px solid var(--border-medium)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                                 }}>
-                                    {user.photoURL ? <img src={user.photoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={14} style={{ color: 'var(--text-muted)' }} />}
+                                    {user.photoURL ? <Image src={user.photoURL} alt="" width={24} height={24} style={{ objectFit: 'cover', borderRadius: '50%' }} /> : <User size={14} style={{ color: 'var(--text-muted)' }} />}
                                 </div>
                             </div>
                         ) : (

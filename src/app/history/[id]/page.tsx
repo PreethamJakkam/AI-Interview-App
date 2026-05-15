@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Clock, Target, CheckCircle, XCircle, Code, BookOpen, MessageSquare } from 'lucide-react';
 import { AppLayout } from '@/components/layout';
 import { getSessionById } from '@/lib/firebase';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface SessionData {
     id: string;
@@ -53,7 +52,6 @@ interface SessionData {
 export default function HistoryDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { user } = useAuth();
     const [session, setSession] = useState<SessionData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 

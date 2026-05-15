@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Code, ChevronRight, ArrowLeft, Clock, Play, CheckCircle, XCircle, Lightbulb, RotateCcw } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Clock, Play, CheckCircle, XCircle, Lightbulb, RotateCcw } from 'lucide-react';
 import { AppLayout } from '@/components/layout';
 import { appConfig } from '@/lib/config';
 import { generateCodingChallenges, evaluateAnswer } from '@/lib/gemini';

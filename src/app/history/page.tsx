@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { History, Calendar, ArrowRight, BookOpen, Code, MessageSquare, TrendingUp, Target, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { History, Calendar, ArrowRight, BookOpen, Code, MessageSquare, TrendingUp, Target, Clock, ChevronDown } from 'lucide-react';
 import { AppLayout } from '@/components/layout';
 import { getPracticeHistory, getUserInterviews } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,7 +36,9 @@ export default function HistoryPage() {
                 const practiceData = await getPracticeHistory(user.uid, filter === 'all' ? undefined : filter as 'quiz' | 'coding' | 'interview', 30);
                 const interviewData = filter === 'all' || filter === 'interview' ? await getUserInterviews(user.uid, 20) : [];
                 const allSessions = [
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     ...practiceData.map((s: any) => ({ ...s, mode: s.mode || 'interview' })),
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     ...interviewData.map((s: any) => ({ ...s, mode: 'interview' }))
                 ].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                 setSessions(allSessions as HistoryRecord[]);

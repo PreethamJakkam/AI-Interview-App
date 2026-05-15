@@ -34,21 +34,24 @@ const parseJSON = <T>(text: string): T => {
     return JSON.parse(clean.trim());
 };
 
-// Retry wrapper with exponential backoff for 429 rate limit errors
-const callAI = async (prompt: string, maxRetries: number = 2): Promise<string | null> => {
+// Retry wrapper with exponential backoff for 429 rate limit and 503 high demand errors
+const callAI = async (prompt: string, maxRetries: number = 3): Promise<string | null> => {
     if (!model) return null;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             const result = await model.generateContent(prompt);
             return result.response.text();
-        } catch (error: any) {
-            const is429 = error?.message?.includes('429') || error?.status === 429;
-            if (is429 && attempt < maxRetries) {
-                const delay = (attempt + 1) * 2000; // 2s, 4s
-                console.warn(`[AI] Rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        } catch (error: unknown) {
+            const aiError = error as { message?: string; status?: number };
+            const is429 = aiError?.message?.includes('429') || aiError?.status === 429;
+            const is503 = aiError?.message?.includes('503') || aiError?.status === 503;
+            const isRetryable = is429 || is503;
+            if (isRetryable && attempt < maxRetries) {
+                const delay = (attempt + 1) * 2000; // 2s, 4s, 6s
+                console.warn(`[AI] ${is503 ? 'Service busy' : 'Rate limited'}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
                 await new Promise(r => setTimeout(r, delay));
             } else {
-                console.error('[AI] Error:', error?.message || error);
+                console.error('[AI] Error:', aiError?.message || error);
                 return null;
             }
         }
@@ -470,7 +473,8 @@ function getMockQuizQuestions(topic: string, difficulty: string, count: number):
     return questions;
 }
 
-function getMockCodingChallenges(role: string, difficulty: string, count: number): CodingChallenge[] {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getMockCodingChallenges(role: string, difficulty: string, _count: number): CodingChallenge[] {
     return [{
         id: 1,
         title: "Two Sum",
@@ -633,7 +637,7 @@ function getMockImprovementPlan(missing: string[], weak: string[]): ImprovementP
     };
 }
 
-export default {
+const geminiExports = {
     isAIAvailable,
     analyzeResume,
     estimateSkillConfidence,
@@ -643,3 +647,4 @@ export default {
     generateImprovementPlan,
     generateVoiceInterviewResponse
 };
+export default geminiExports;

@@ -23,16 +23,33 @@ interface Question {
     sampleAnswer?: string;
 }
 
+interface EvaluationResult {
+    questionId: number;
+    answer: string;
+    score: number;
+    feedback: string;
+    strengths: string[];
+    weaknesses: string[];
+    missingConcepts?: string[];
+}
+
 interface Answer {
     questionIndex: number;
     answer: string;
     timeSpent: number;
-    evaluation?: any;
+    evaluation?: EvaluationResult;
+}
+
+interface InterviewData {
+    role: string;
+    mode: string;
+    questions: Question[];
+    analysis?: Record<string, unknown>;
 }
 
 export default function InterviewSessionPage() {
     const router = useRouter();
-    const [interviewData, setInterviewData] = useState<any>(null);
+    const [interviewData, setInterviewData] = useState<InterviewData | null>(null);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [currentAnswer, setCurrentAnswer] = useState('');
@@ -50,6 +67,7 @@ export default function InterviewSessionPage() {
         }
         setInterviewData(JSON.parse(data));
         timer.start();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -62,9 +80,10 @@ export default function InterviewSessionPage() {
         if (timer.timeRemaining === 0) {
             handleSubmitAnswer();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [timer.timeRemaining]);
 
-    const currentQuestion: Question | null = interviewData?.questions?.[currentQuestionIndex];
+    const currentQuestion: Question | undefined = interviewData?.questions?.[currentQuestionIndex];
     const totalQuestions = interviewData?.questions?.length || 0;
     const isCodeMode = interviewData?.mode === 'coding';
     const isVoiceMode = interviewData?.mode === 'voice';

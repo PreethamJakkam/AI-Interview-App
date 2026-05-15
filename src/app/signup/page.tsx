@@ -27,8 +27,9 @@ export default function SignupPage() {
             await signUp(email, password, name);
             toast.success('Account created!');
             router.push('/');
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to create account');
+        } catch (error: unknown) {
+            const authError = error as { message?: string };
+            toast.error(authError.message || 'Failed to create account');
         } finally {
             setIsLoading(false);
         }
@@ -39,8 +40,9 @@ export default function SignupPage() {
             await signInWithGoogle();
             toast.success('Welcome!');
             router.push('/');
-        } catch (error: any) {
-            toast.error(error.message || 'Google sign in failed');
+        } catch (error: unknown) {
+            const authError = error as { message?: string };
+            toast.error(authError.message || 'Google sign in failed');
         }
     };
 

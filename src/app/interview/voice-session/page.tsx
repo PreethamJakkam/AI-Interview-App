@@ -16,7 +16,7 @@ export default function VoiceSessionPage() {
     const [interviewConfig, setInterviewConfig] = useState<{
         role: string;
         topic: string;
-        analysis: any;
+        analysis: Record<string, unknown> | undefined;
     } | null>(null);
 
     useEffect(() => {
@@ -27,11 +27,12 @@ export default function VoiceSessionPage() {
         }
 
         const parsed = JSON.parse(data);
-        setInterviewConfig({
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setInterviewConfig(() => ({
             role: parsed.role || 'fullstack',
             topic: parsed.topic || parsed.analysis?.toolsFrameworks?.[0] || 'General Programming',
             analysis: parsed.analysis,
-        });
+        }));
     }, [router]);
 
     const voiceInterview = useVoiceInterview({
@@ -72,7 +73,7 @@ export default function VoiceSessionPage() {
                 })),
             questions: voiceInterview.messages
                 .filter(m => m.role === 'ai' && (m.type === 'question' || m.type === 'greeting'))
-                .map((m, i) => ({
+                .map((m) => ({
                     question: m.content,
                     difficulty: 'medium',
                     skill: interviewConfig?.topic || 'General',

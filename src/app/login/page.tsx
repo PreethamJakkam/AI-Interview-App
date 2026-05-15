@@ -23,8 +23,9 @@ export default function LoginPage() {
             await signIn(email, password);
             toast.success('Welcome back!');
             router.push('/');
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to sign in');
+        } catch (error: unknown) {
+            const authError = error as { message?: string };
+            toast.error(authError.message || 'Failed to sign in');
         } finally {
             setIsLoading(false);
         }
@@ -35,8 +36,9 @@ export default function LoginPage() {
             await signInWithGoogle();
             toast.success('Welcome!');
             router.push('/');
-        } catch (error: any) {
-            toast.error(error.message || 'Google sign in failed');
+        } catch (error: unknown) {
+            const authError = error as { message?: string };
+            toast.error(authError.message || 'Google sign in failed');
         }
     };
 

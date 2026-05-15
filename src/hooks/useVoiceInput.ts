@@ -60,7 +60,8 @@ export function useVoiceInput(): UseVoiceInputReturn {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
             if (SpeechRecognitionAPI) {
-                setIsSupported(true);
+                // eslint-disable-next-line react-hooks/set-state-in-effect
+                setIsSupported(() => true);
                 const recognitionInstance: SpeechRecognitionInstance = new SpeechRecognitionAPI();
                 recognitionInstance.continuous = true;
                 recognitionInstance.interimResults = true;
@@ -89,7 +90,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
                     setIsListening(false);
                 };
 
-                setRecognition(recognitionInstance);
+                setRecognition(() => recognitionInstance);
             }
         }
     }, []);
